@@ -28,21 +28,42 @@ export default function LoginPage() {
         setLoading(true);
         setError(null);
 
-        const { error } = await supabase.auth.signInWithPassword({
+        // Standard Supabase Auth
+        const { data, error: authError } = await supabase.auth.signInWithPassword({
             email,
             password,
         });
 
-        if (error) {
-            // This now maps the Supabase error to your UI
-            setError(error.message);
+        if (authError) {
+            setError(authError.message);
             setLoading(false);
-        } else {
-            router.push("/dashboard");
-            router.refresh();
+            return;
         }
-    };
 
+        //  Gatekeeper Check Does the DB role match the selected role?
+        const actualRole = data.user?.user_metadata?.role?.toLowerCase();
+        const selectedRole = userRole?.toLowerCase();
+
+        const roleMapping: Record<string, string> = {
+            student: "student",
+            staff: "staff",
+            manager: "line_manager",
+            admin: "admin",
+            external: "guest"
+        };
+
+        if (actualRole !== roleMapping[selectedRole as string]) {
+            // If they don't match, Kick them out!
+            await supabase.auth.signOut();
+            setError(`Access Denied: This account is not registered as a ${userRole}.`);
+            setLoading(false);
+            return;
+        }
+
+        // 4. Success!
+        router.push("/dashboard");
+        router.refresh();
+    };
     return (
         <div className="flex min-h-screen items-center justify-center p-4 bg-[#F4F7F9]">
             <div className="w-full max-w-2xl">
@@ -123,7 +144,7 @@ export default function LoginPage() {
                                 />
                             </div>
 
-                            <button 
+                            <button
                                 type="submit"
                                 disabled={loading}
                                 className="w-full bg-[#0A4F8B] hover:bg-[#0D284A] text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-900/10 transition-all active:scale-[0.98] disabled:opacity-50 mt-4"

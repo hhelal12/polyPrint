@@ -1,27 +1,20 @@
 "use client";
 
 import { createClient } from "@/utils/supabase/client";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export default function LogoutBut() {
   const supabase = createClient();
-  const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
 
     try {
-      // 1. Tell Supabase to invalidate the session/JWT
       const { error } = await supabase.auth.signOut();
       
       if (error) throw error;
-
-      // 2. Clear the router cache and redirect to login
-      // router.refresh() ensures the middleware re-checks the now-empty cookies
-      router.refresh();
-      router.push("/login");
+      window.location.href = "/login";
 
     } catch (error) {
       console.error("Error logging out:", error);

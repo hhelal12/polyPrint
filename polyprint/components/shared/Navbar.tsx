@@ -1,22 +1,20 @@
+// components/shared/Navbar.tsx
 import Link from 'next/link';
 import Image from 'next/image';
-import { cookies } from "next/headers";
-import { createClient } from "@/utils/supabase/server";
 import LogoutBut from './logoutBut';
 import SessionGuard from '../../lib/auth/SessionGuard';
+import { getCurrentUser } from "@/lib/auth/getCurrentUser";
 
 export default async function Navbar() {
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
+  const data = await getCurrentUser();
 
-  // Use getUser() for security to ensure metadata is fresh
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  // 1. Extract Role and Name with fallbacks for manual Auth users
-  const role = user?.user_metadata?.role || "Student";
-  const fullName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || "User";
-  
-  // 2. Generate Initials (e.g., "Ali Jaffar" -> "AJ" or "202201389" -> "2")
+  if (!data) return null; 
+
+  const { fullName, role } = data;
+
+  // Standardize role to lowercase to match the config keys
+  const userRoleKey = role?.toLowerCase() as keyof typeof ROLE_NAV_CONFIG;
+
   const initials = fullName
     .split(/[ ._]/)
     .map((n: string) => n[0])
@@ -24,9 +22,42 @@ export default async function Navbar() {
     .toUpperCase()
     .substring(0, 2);
 
+  const ROLE_NAV_CONFIG = {
+    student: [
+      { label: "Dashboard", href: "/dashboard" },
+      { label: "New Order", href: "/orders/new" }, 
+      { label: "My Order", href: "/orders" },  
+      { label: "Support", href: "/support" },
+      { label: "My Feedback", href: "/feedback" } 
+    ],
+    staff: [
+      { label: "Dashboard", href: "/dashboard" },
+      { label: "Manage Order", href: "/orders/manage" },
+      { label: "Material Order", href: "/orders/material" },
+      { label: "Help", href: "/help" }
+    ],
+    manager: [
+      { label: "Dashboard", href: "/dashboard" },
+      { label: "Approvals", href: "/approvals" } 
+    ],
+    admin: [
+      { label: "Dashboard", href: "/dashboard" },
+      { label: "Analytics", href: "/analytics" }, 
+      { label: "User Management", href: "/users" },
+      { label: "Audit Logs", href: "/audit-logs" }
+    ],
+    external: [
+      { label: "Dashboard", href: "/dashboard" },
+      { label: "New Order", href: "/orders/new" },
+      { label: "My Order", href: "/orders" }
+    ]
+  };
+
+  // Get the links for the current role, fallback to empty array if role not found
+  const navLinks = ROLE_NAV_CONFIG[userRoleKey] || [];
+
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white shadow-sm">
-      {/* 15-minute Auto-Logout Logic */}
       <SessionGuard />
 
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
@@ -45,20 +76,17 @@ export default async function Navbar() {
           </span>
         </Link>
 
-        {/* Navigation Links - Hidden on Mobile */}
-        <div className="hidden md:flex items-center gap-8 text-sm font-semibold text-gray-600">
-          <Link href="/dashboard" className="hover:text-[#3CCFD0] transition-colors">
-            Dashboard
-          </Link>
-          <Link href="/orders/new" className="hover:text-[#3CCFD0] transition-colors">
-            New Order
-          </Link>
-          {/* Admin/Staff Only Link */}
-          {(role === 'Admin' || role === 'Staff') && (
-            <Link href="/inventory" className="hover:text-[#3CCFD0] transition-colors">
-              Inventory
+        {/* Dynamic Navigation Links Based on Role */}
+        <div className="hidden md:flex items-center gap-6 text-sm font-semibold text-gray-600">
+          {navLinks.map((link) => (
+            <Link 
+              key={link.label} 
+              href={link.href} 
+              className="hover:text-[#3CCFD0] transition-colors"
+            >
+              {link.label}
             </Link>
-          )}
+          ))}
         </div>
 
         {/* User Actions */}
@@ -80,7 +108,6 @@ export default async function Navbar() {
 
           <LogoutBut />
         </div>
-
       </div>
     </nav>
   );
