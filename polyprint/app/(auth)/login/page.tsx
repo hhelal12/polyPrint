@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -14,6 +14,19 @@ export default function LoginPage() {
 
     const router = useRouter();
     const supabase = createClient();
+
+    /**
+     * INVITE LINK TRAP
+     * Catches the access token from the URL hash and redirects to setup-password.
+     * This handles the "chicken and egg" cookie problem where the server (Middleware)
+     * cannot see the hash, but the browser can.
+     */
+    useEffect(() => {
+        const hash = window.location.hash;
+        if (hash.includes("type=invite") || hash.includes("access_token=")) {
+            router.replace(`/setup-password${hash}`);
+        }
+    }, [router]);
 
     const roles = [
         { id: "student", label: "Student", desc: "Order printing for courses", icon: "🎓" },
@@ -40,7 +53,7 @@ export default function LoginPage() {
             return;
         }
 
-        //  Gatekeeper Check Does the DB role match the selected role?
+        // Gatekeeper Check: Does the DB role match the selected role?
         const actualRole = data.user?.user_metadata?.role?.toLowerCase();
         const selectedRole = userRole?.toLowerCase();
 
@@ -53,17 +66,16 @@ export default function LoginPage() {
         };
 
         if (actualRole !== roleMapping[selectedRole as string]) {
-            // If they don't match, Kick them out!
             await supabase.auth.signOut();
             setError(`Access Denied: This account is not registered as a ${userRole}.`);
             setLoading(false);
             return;
         }
 
-        // 4. Success!
         router.push("/dashboard");
         router.refresh();
     };
+
     return (
         <div className="flex min-h-screen items-center justify-center p-4 bg-[#F4F7F9]">
             <div className="w-full max-w-2xl">
@@ -82,7 +94,6 @@ export default function LoginPage() {
                             <button
                                 key={role.id}
                                 onClick={() => setUserRole(role.id)}
-                                // Added border-gray-200 and bg-white/80 so buttons are visible immediately
                                 className="group p-6 bg-white border-2 border-gray-100 rounded-2xl shadow-sm hover:border-[#3CCFD0] hover:shadow-xl transition-all text-left"
                             >
                                 <span className="text-3xl mb-3 block">{role.icon}</span>
@@ -110,7 +121,6 @@ export default function LoginPage() {
                         </p>
 
                         <form onSubmit={handleLogin} className="space-y-4">
-                            {/* ERROR DISPLAY: This is the missing piece that shows the "invalid credentials" message */}
                             {error && (
                                 <div className="p-3 rounded-lg bg-red-50 border border-red-100 text-red-600 text-sm animate-in shake-in">
                                     <div className="flex items-center gap-2">

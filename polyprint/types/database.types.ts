@@ -91,6 +91,7 @@ export type Database = {
           id: string
           item_name: string
           threshold: number | null
+          unit_cost: number | null
           updated_at: string | null
         }
         Insert: {
@@ -98,6 +99,7 @@ export type Database = {
           id?: string
           item_name: string
           threshold?: number | null
+          unit_cost?: number | null
           updated_at?: string | null
         }
         Update: {
@@ -105,6 +107,7 @@ export type Database = {
           id?: string
           item_name?: string
           threshold?: number | null
+          unit_cost?: number | null
           updated_at?: string | null
         }
         Relationships: []
@@ -114,6 +117,7 @@ export type Database = {
           color_mode: string | null
           file_url: string
           id: string
+          inventory_id: string | null
           order_id: string | null
           paper_size: string | null
           quantity: number | null
@@ -124,6 +128,7 @@ export type Database = {
           color_mode?: string | null
           file_url: string
           id?: string
+          inventory_id?: string | null
           order_id?: string | null
           paper_size?: string | null
           quantity?: number | null
@@ -134,6 +139,7 @@ export type Database = {
           color_mode?: string | null
           file_url?: string
           id?: string
+          inventory_id?: string | null
           order_id?: string | null
           paper_size?: string | null
           quantity?: number | null
@@ -141,6 +147,13 @@ export type Database = {
           special_instructions?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "order_items_inventory_id_fkey"
+            columns: ["inventory_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "order_items_order_id_fkey"
             columns: ["order_id"]
@@ -201,6 +214,7 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string
+          email: string | null
           full_name: string | null
           id: string
           manager_id: string | null
@@ -209,6 +223,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          email?: string | null
           full_name?: string | null
           id: string
           manager_id?: string | null
@@ -217,6 +232,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          email?: string | null
           full_name?: string | null
           id?: string
           manager_id?: string | null
