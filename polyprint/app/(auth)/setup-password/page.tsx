@@ -12,21 +12,33 @@ export default function ConfirmPage() {
   const supabase = createClient();
   const router = useRouter();
 
-  useEffect(() => {
-    const checkSession = async () => {
-      // Small delay to allow Supabase to process the hash fragment
-      const { data: { session } } = await supabase.auth.getSession();
-      const { data: { user } } = await supabase.auth.getUser();
+useEffect(() => {
+  const handleInvite = async () => {
+    const params = new URLSearchParams(window.location.search);
 
-      // If we have a session OR a user, the link worked! 
-      // We only show an error if BOTH are missing.
-      if (!session && !user) {
-        setError("Invalid or expired invite link.");
-      }
+    const token_hash = params.get("token_hash");
+    const type = params.get("type");
+
+    if (!token_hash || type !== "invite") {
+      setError("Invalid invite link.");
       setLoading(false);
-    };
-    checkSession();
-  }, [supabase]);
+      return;
+    }
+
+    const { error } = await supabase.auth.verifyOtp({
+      token_hash,
+      type: "invite",
+    });
+
+    if (error) {
+      setError(error.message);
+    }
+
+    setLoading(false);
+  };
+
+  handleInvite();
+}, []);
 
   // Validation Logic: 8-12 chars, Upper, Lower, Special
   const validatePassword = (pass: string) => {

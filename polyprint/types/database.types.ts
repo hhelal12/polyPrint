@@ -165,7 +165,6 @@ export type Database = {
       }
       orders: {
         Row: {
-          account_code: string
           created_at: string | null
           id: string
           manager_id: string | null
@@ -175,7 +174,6 @@ export type Database = {
           total_price: number | null
         }
         Insert: {
-          account_code: string
           created_at?: string | null
           id?: string
           manager_id?: string | null
@@ -185,7 +183,6 @@ export type Database = {
           total_price?: number | null
         }
         Update: {
-          account_code?: string
           created_at?: string | null
           id?: string
           manager_id?: string | null
