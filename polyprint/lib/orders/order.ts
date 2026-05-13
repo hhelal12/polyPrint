@@ -4,10 +4,17 @@ import { createClient } from "@/utils/supabase/server";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 
+/**
+ * STEP 1 & 3: Submit a new order and its specific print items.
+ * Captures order identity and technical specifications.
+ */
 export async function submitOrderAction(formData: {
+  order_name: string;
+  description: string;
   service_type: string;
   paper_size: string;
   color_mode: string;
+  print_sides: string;
   quantity: number;
   file_url: string;
   special_instructions?: string;
@@ -19,19 +26,21 @@ export async function submitOrderAction(formData: {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("Unauthorized");
 
-    //  Create order without manager_id to avoid FK errors
+    // 1. Create main order entry
     const { data: order, error: orderErr } = await supabase
       .from("orders")
       .insert({
         requester_id: user.id,
-        status: "pending_approval", // Matches your DB check constraint
+        order_name: formData.order_name,
+        description: formData.description,
+        status: "pending_approval", // Ensure this matches your DB Check Constraint
       })
       .select()
       .single();
 
     if (orderErr) throw orderErr;
 
-    //  Insert the specific details
+    // 2. Insert item specifications (One-sided vs Double-sided, etc.)
     const { error: itemErr } = await supabase
       .from("order_items")
       .insert({
@@ -39,6 +48,7 @@ export async function submitOrderAction(formData: {
         service_type: formData.service_type,
         paper_size: formData.paper_size,
         color_mode: formData.color_mode,
+        print_sides: formData.print_sides,
         quantity: formData.quantity,
         file_url: formData.file_url,
         special_instructions: formData.special_instructions,
@@ -53,6 +63,10 @@ export async function submitOrderAction(formData: {
   }
 }
 
+/**
+ * STEP 4: Manager Approval
+ * Updates status and captures the logged-in manager's ID.
+ */
 export async function approveOrderAction(orderId: string) {
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
@@ -78,6 +92,10 @@ export async function approveOrderAction(orderId: string) {
   }
 }
 
+/**
+ * Retrieval: Fetch all orders for the current student.
+ * Includes nested print specifications.
+ */
 export async function getMyOrders() {
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
@@ -86,20 +104,23 @@ export async function getMyOrders() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("Unauthorized");
 
-    // Fetch orders for the current user, including their linked items
     const { data, error } = await supabase
       .from("orders")
       .select(`
         id,
         created_at,
         status,
+        order_name,
+        description,
         manager_id,
         order_items (
           service_type,
           paper_size,
           color_mode,
+          print_sides,
           quantity,
-          file_url
+          file_url,
+          special_instructions
         )
       `)
       .eq("requester_id", user.id)

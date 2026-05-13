@@ -120,6 +120,7 @@ export type Database = {
           inventory_id: string | null
           order_id: string | null
           paper_size: string | null
+          print_sides: string | null
           quantity: number | null
           service_type: string | null
           special_instructions: string | null
@@ -131,6 +132,7 @@ export type Database = {
           inventory_id?: string | null
           order_id?: string | null
           paper_size?: string | null
+          print_sides?: string | null
           quantity?: number | null
           service_type?: string | null
           special_instructions?: string | null
@@ -142,6 +144,7 @@ export type Database = {
           inventory_id?: string | null
           order_id?: string | null
           paper_size?: string | null
+          print_sides?: string | null
           quantity?: number | null
           service_type?: string | null
           special_instructions?: string | null
@@ -166,27 +169,33 @@ export type Database = {
       orders: {
         Row: {
           created_at: string | null
+          description: string | null
           id: string
           manager_id: string | null
           manager_notes: string | null
+          order_name: string | null
           requester_id: string
           status: string | null
           total_price: number | null
         }
         Insert: {
           created_at?: string | null
+          description?: string | null
           id?: string
           manager_id?: string | null
           manager_notes?: string | null
+          order_name?: string | null
           requester_id: string
           status?: string | null
           total_price?: number | null
         }
         Update: {
           created_at?: string | null
+          description?: string | null
           id?: string
           manager_id?: string | null
           manager_notes?: string | null
+          order_name?: string | null
           requester_id?: string
           status?: string | null
           total_price?: number | null

@@ -20,7 +20,7 @@ export default async function OrdersDashboard() {
           <p className="text-slate-500">Track your CDOFS requests and approval status.</p>
         </div>
         <Link 
-          href="/orders/new" 
+          href="/dashboard/new-order" 
           className="bg-cyan-600 hover:bg-cyan-700 text-white px-6 py-3 rounded-xl font-semibold transition-all shadow-sm"
         >
           + New Request
@@ -32,7 +32,7 @@ export default async function OrdersDashboard() {
           <div className="text-5xl mb-4">📄</div>
           <h3 className="text-xl font-semibold text-slate-800">No orders found</h3>
           <p className="text-slate-500 mt-2">You haven't submitted any print requests yet.</p>
-          <Link href="/orders/new" className="text-cyan-600 font-medium mt-4 inline-block hover:underline">
+          <Link href="/dashboard/new-order" className="text-cyan-600 font-medium mt-4 inline-block hover:underline">
             Submit your first order &rarr;
           </Link>
         </div>
@@ -41,35 +41,50 @@ export default async function OrdersDashboard() {
           {orders.map((order: any) => (
             <div 
               key={order.id} 
-              className="bg-white border border-slate-100 p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow flex flex-col md:flex-row md:items-center justify-between gap-4"
+              className="bg-white border border-slate-100 p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow flex flex-col md:flex-row md:items-start justify-between gap-4"
             >
               <div className="flex-1">
-                <div className="flex items-center gap-3 mb-1">
-                  <span className="text-xs font-mono text-slate-400 uppercase tracking-wider">
-                    ID: {order.id.slice(0, 8)}
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="text-[10px] font-mono text-slate-400 uppercase tracking-tighter">
+                    #{order.id.slice(0, 8)}
                   </span>
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${getStatusStyles(order.status)}`}>
+                  <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase ${getStatusStyles(order.status)}`}>
                     {order.status.replace('_', ' ')}
                   </span>
                 </div>
-                <h3 className="text-lg font-bold text-slate-800">
-                  {order.order_items[0]?.service_type || "Printing Service"}
+
+                {/* --- DISPLAY ORDER NAME --- */}
+                <h3 className="text-xl font-bold text-slate-900 leading-tight">
+                  {order.order_name || "Untitled Request"}
                 </h3>
-                <p className="text-sm text-slate-500">
-                  {order.order_items[0]?.paper_size} • {order.order_items[0]?.color_mode} • Qty: {order.order_items[0]?.quantity}
-                </p>
+
+                {/* --- DISPLAY DESCRIPTION --- */}
+                {order.description && (
+                  <p className="text-slate-600 text-sm mt-1 mb-3 line-clamp-2 italic">
+                    "{order.description}"
+                  </p>
+                )}
+
+                <div className="flex flex-wrap gap-2 items-center mt-2">
+                   <span className="bg-slate-100 text-slate-700 text-[11px] px-2 py-0.5 rounded font-medium">
+                    {order.order_items[0]?.service_type}
+                   </span>
+                   <p className="text-sm text-slate-500">
+                    {order.order_items[0]?.paper_size} • {order.order_items[0]?.color_mode} • {order.order_items[0]?.print_sides} • Qty: {order.order_items[0]?.quantity}
+                  </p>
+                </div>
               </div>
 
-              <div className="text-right flex flex-col items-end justify-center">
-                <span className="text-sm font-medium text-slate-600">
+              <div className="text-right flex flex-col items-end justify-start pt-1">
+                <span className="text-sm font-semibold text-slate-700">
                   {new Date(order.created_at).toLocaleDateString('en-GB', {
                     day: 'numeric', 
                     month: 'short', 
                     year: 'numeric'
                   })}
                 </span>
-                <span className="text-xs text-slate-400 mt-1">
-                  Submitted at {new Date(order.created_at).toLocaleTimeString('en-GB', { 
+                <span className="text-xs text-slate-400 mt-0.5">
+                  {new Date(order.created_at).toLocaleTimeString('en-GB', { 
                     hour: '2-digit', 
                     minute: '2-digit' 
                   })}

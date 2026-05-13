@@ -12,9 +12,12 @@ export default function NewOrderPage() {
     const [file, setFile] = useState<File | null>(null);
 
     const [formData, setFormData] = useState({
+        order_name: "",
+        description: "",
         service_type: "Printing",
         paper_size: "A4",
         color_mode: "Black & White",
+        print_sides: "One-sided",
         quantity: 1,
         special_instructions: ""
     });
@@ -40,7 +43,7 @@ export default function NewOrderPage() {
 
             if (uploadError) throw uploadError;
 
-            // 2. Submit order (Notice manager_id is NOT sent here)
+            // 2. Submit order using updated action
             const result = await submitOrderAction({
                 ...formData,
                 file_url: fileName,
@@ -63,12 +66,40 @@ export default function NewOrderPage() {
                 <p className="text-slate-500 mt-2">Submit your material for Copy Centre approval.</p>
             </header>
 
-            <form onSubmit={handleSubmit} className="space-y-8">
+            <form onSubmit={handleSubmit} className="space-y-6">
+                {/* --- NEW: Order Identity Fields --- */}
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-2">Order Name / Title</label>
+                        <input
+                            type="text"
+                            required
+                            placeholder="e.g., IT7099 Weekly Report"
+                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 outline-none"
+                            value={formData.order_name}
+                            onChange={(e) => setFormData({ ...formData, order_name: e.target.value })}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-2">Description</label>
+                        <textarea
+                            placeholder="Briefly describe what this print is for..."
+                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 outline-none h-24"
+                            value={formData.description}
+                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                        />
+                    </div>
+                </div>
+
+                <hr className="border-slate-100" />
+
+                {/* Technical Specifications */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label className="block text-sm font-semibold text-slate-700 mb-2">Service Type</label>
                         <select
                             className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 outline-none"
+                            value={formData.service_type}
                             onChange={(e) => setFormData({ ...formData, service_type: e.target.value })}
                         >
                             <option>Printing</option>
@@ -84,19 +115,17 @@ export default function NewOrderPage() {
                             required
                             className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 outline-none"
                             value={isNaN(formData.quantity) ? "" : formData.quantity}
-                            onChange={(e) => {
-                                const val = parseInt(e.target.value);
-                                setFormData({ ...formData, quantity: val });
-                            }}
+                            onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) })}
                         />
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div>
                         <label className="block text-sm font-semibold text-slate-700 mb-2">Paper Size</label>
                         <select
                             className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 outline-none"
+                            value={formData.paper_size}
                             onChange={(e) => setFormData({ ...formData, paper_size: e.target.value })}
                         >
                             <option>A4</option>
@@ -108,15 +137,28 @@ export default function NewOrderPage() {
                         <label className="block text-sm font-semibold text-slate-700 mb-2">Color Mode</label>
                         <select
                             className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 outline-none"
+                            value={formData.color_mode}
                             onChange={(e) => setFormData({ ...formData, color_mode: e.target.value })}
                         >
                             <option>Black & White</option>
                             <option>Full Color</option>
                         </select>
                     </div>
+                    {/* --- NEW: Print Sides --- */}
+                    <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-2">Sides</label>
+                        <select
+                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 outline-none"
+                            value={formData.print_sides}
+                            onChange={(e) => setFormData({ ...formData, print_sides: e.target.value })}
+                        >
+                            <option>One-sided</option>
+                            <option>Double-sided</option>
+                        </select>
+                    </div>
                 </div>
 
-                <div className="relative border-2 border-dashed border-slate-200 rounded-2xl p-12 text-center hover:bg-slate-50 transition-all group">
+                <div className="relative border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center hover:bg-slate-50 transition-all group">
                     <input
                         type="file"
                         accept=".pdf"
@@ -124,10 +166,10 @@ export default function NewOrderPage() {
                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                     />
                     <div className="flex flex-col items-center">
-                        <div className="w-12 h-12 bg-cyan-50 rounded-full flex items-center justify-center mb-4 transition-transform group-hover:scale-110">
-                            <span className="text-cyan-600 font-bold">PDF</span>
+                        <div className="w-10 h-10 bg-cyan-50 rounded-full flex items-center justify-center mb-3 transition-transform group-hover:scale-110">
+                            <span className="text-cyan-600 font-bold text-xs">PDF</span>
                         </div>
-                        <p className="text-slate-600 font-medium">
+                        <p className="text-slate-600 text-sm font-medium">
                             {file ? <span className="text-slate-900">{file.name}</span> : "Upload Material PDF"}
                         </p>
                         {file && <p className="text-cyan-600 text-xs font-mono mt-1">{formatFileSize(file.size)}</p>}
@@ -139,7 +181,7 @@ export default function NewOrderPage() {
                     disabled={loading}
                     className="w-full py-4 bg-slate-900 text-white rounded-xl font-bold text-lg hover:bg-slate-800 disabled:bg-slate-300 shadow-lg shadow-slate-900/10 transition-all"
                 >
-                    {loading ? "Processing..." : "Send to Line Manager"}
+                    {loading ? "Processing..." : "Send for Approval"}
                 </button>
             </form>
         </div>
