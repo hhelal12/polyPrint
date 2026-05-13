@@ -4,10 +4,88 @@ import { createClient } from "@/utils/supabase/server";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 
-/**
- * STEP 1 & 3: Submit a new order and its specific print items.
- * Captures order identity and technical specifications.
- */
+
+export async function getPendingOrdersForManager(page: number = 0, pageSize: number = 8) {
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+
+  const from = page * pageSize;
+  const to = from + pageSize - 1;
+
+  try {
+    const { data, error, count } = await supabase
+      .from("orders")
+      .select(`
+        *,
+        requester:profiles!requester_id (
+          full_name
+        )
+      `, { count: 'exact' })
+      .eq("status", "pending_approval")
+      .order("created_at", { ascending: true })
+      .range(from, to);
+
+    if (error) throw error;
+    return { data: data || [], totalCount: count || 0 };
+  } catch (err: any) {
+    console.error("Fetch Error:", err.message);
+    return { error: err.message, data: [], totalCount: 0 };
+  }
+}
+
+export async function getPendingCount() {
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+
+  const { count, error } = await supabase
+    .from("orders")
+    .select('*', { count: 'exact', head: true })
+    .eq("status", "pending_approval");
+
+  return count || 0;
+}
+
+export async function updateOrderStatusAction(
+  orderId: string, 
+  newStatus: "approved" | "rejected",
+  managerNote?: string // Added parameter
+) {
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("Unauthorized");
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    const role = profile?.role?.toLowerCase();
+    if (role !== "line_manager" && role !== "manager") {
+      throw new Error("Access Denied: Manager permissions required.");
+    }
+
+    const { error } = await supabase
+      .from("orders")
+      .update({ 
+        status: newStatus, 
+        manager_id: user.id,
+        manager_notes: managerNote // Saves the note to DB
+      })
+      .eq("id", orderId);
+
+    if (error) throw error;
+
+    revalidatePath("/dashboard/manager"); 
+    return { success: true };
+  } catch (err: any) {
+    return { error: err.message };
+  }
+}
+
 export async function submitOrderAction(formData: {
   order_name: string;
   description: string;
