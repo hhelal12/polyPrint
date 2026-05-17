@@ -6,11 +6,12 @@ import StudentDashboard from "@/components/dashboard/StudentDashboard";
 import ManagerDashboard from "@/components/dashboard/ManagerDashboard";
 // Import other dashboards as needed...
 
-export default async function DashboardPage({ 
-    searchParams 
-}: { 
-    searchParams: { page?: string } 
-}) {
+// Define the correct Next.js 15 type parameters where searchParams is a Promise
+interface DashboardProps {
+  searchParams: Promise<{ page?: string; [key: string]: string | string[] | undefined }>;
+}
+
+export default async function DashboardPage({ searchParams }: DashboardProps) {
     const data = await getCurrentUser();
 
     if (!data) {
@@ -18,17 +19,20 @@ export default async function DashboardPage({
     }
 
     const { fullName, role } = data;
-    const currentPage = Number(searchParams?.page) || 0;
+
+    // Explicitly unwrap searchParams before accessing its attributes
+    const resolvedParams = await searchParams;
+    const currentPage = Number(resolvedParams?.page) || 0;
 
     switch (role?.toLowerCase()) {
         case "student":
             return <StudentDashboard fullName={fullName} />;
         
+        // Combined operations to process administrative screens correctly
         case "manager":
         case "staff":
-            return <StudentDashboard fullName={fullName} />;
         case "line_manager":
-            // Fetch fresh data
+            // Fetch layout metrics using the unpacked configuration variables
             const result = await getPendingOrdersForManager(currentPage, 5);
             const pendingCount = await getPendingCount();
 

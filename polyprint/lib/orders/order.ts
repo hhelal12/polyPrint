@@ -16,9 +16,22 @@ export async function getPendingOrdersForManager(page: number = 0, pageSize: num
     const { data, error, count } = await supabase
       .from("orders")
       .select(`
-        *,
+        id,
+        order_name,
+        description,
+        status,
+        created_at,
         requester:profiles!requester_id (
           full_name
+        ),
+        order_items (
+          service_type,
+          quantity,
+          paper_size,
+          color_mode,
+          print_sides,
+          file_url,
+          special_instructions
         )
       `, { count: 'exact' })
       .eq("status", "pending_approval")

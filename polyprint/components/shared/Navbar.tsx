@@ -1,9 +1,9 @@
-// components/shared/Navbar.tsx
 import Link from 'next/link';
 import Image from 'next/image';
 import LogoutBut from './logoutBut';
 import SessionGuard from '../../lib/auth/SessionGuard';
 import { getCurrentUser } from "@/lib/auth/getCurrentUser";
+import NotificationBell from './NotificationBell'; // Import the new component
 
 export default async function Navbar() {
   const data = await getCurrentUser();
@@ -11,8 +11,9 @@ export default async function Navbar() {
   if (!data) return null; 
 
   const { fullName, role } = data;
+  const userId = data.user.id; // Extract the user ID explicitly to pass down
 
-  // Standardize role to lowercase to match the config keys
+  // Standardize role to lowercase to match the config keys cleanly
   const userRoleKey = role?.toLowerCase() as keyof typeof ROLE_NAV_CONFIG;
 
   const initials = fullName
@@ -40,6 +41,10 @@ export default async function Navbar() {
       { label: "Dashboard", href: "/dashboard" },
       { label: "Approvals", href: "/approvals" } 
     ],
+    line_manager: [ // Maps database snake_case structure cleanly
+      { label: "Dashboard", href: "/dashboard" },
+      { label: "Approvals", href: "/approvals" } 
+    ],
     admin: [
       { label: "Dashboard", href: "/dashboard" },
       { label: "Analytics", href: "/analytics" }, 
@@ -53,7 +58,6 @@ export default async function Navbar() {
     ]
   };
 
-  // Get the links for the current role, fallback to empty array if role not found
   const navLinks = ROLE_NAV_CONFIG[userRoleKey] || [];
 
   return (
@@ -91,6 +95,12 @@ export default async function Navbar() {
 
         {/* User Actions */}
         <div className="flex items-center gap-4">
+          
+          {/* Real-time Notification Dropdown */}
+          <NotificationBell currentUserId={userId} />
+
+          <div className="h-6 w-px bg-gray-200" />
+
           <div className="hidden sm:flex flex-col text-right">
             <span className="text-sm font-bold text-[#0D284A] leading-none">
               {fullName}
