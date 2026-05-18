@@ -68,7 +68,7 @@ export default function OrdersDashboard() {
           <p className="text-slate-500">Track your CDOFS requests and approval status.</p>
         </div>
         <Link 
-          href="/dashboard/new-order" 
+          href="/orders/new" 
           className="bg-cyan-600 hover:bg-cyan-700 text-white px-6 py-3 rounded-xl font-semibold transition-all shadow-sm text-sm"
         >
           + New Request
@@ -95,7 +95,7 @@ export default function OrdersDashboard() {
             { id: "all", label: "All" },
             { id: "pending_approval", label: "Pending" },
             { id: "approved", label: "Approved" },
-            { id: "completed", label: "completed" },
+            { id: "completed", label: "Completed" },
             { id: "rejected", label: "Rejected" },
           ].map((tab) => (
             <button
@@ -122,58 +122,89 @@ export default function OrdersDashboard() {
         </div>
       ) : (
         <div className="grid gap-6">
-          {filteredOrders.map((order: any) => (
-            <div 
-              key={order.id} 
-              className="bg-white border border-slate-100 p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow flex flex-col md:flex-row md:items-start justify-between gap-4"
-            >
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
-                  <span className="text-[10px] font-mono text-slate-400 uppercase tracking-tighter">
-                    #{order.id.slice(0, 8)}
-                  </span>
-                  <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase ${getStatusStyles(order.status)}`}>
-                    {order.status.replace('_', ' ')}
-                  </span>
+          {filteredOrders.map((order: any) => {
+            // Extract the feedback details if present
+            const feedbackItem = Array.isArray(order.feedback) ? order.feedback[0] : order.feedback;
+            const hasFeedback = order.status === "completed" && feedbackItem;
+
+            return (
+              <div 
+                key={order.id} 
+                className="bg-white border border-slate-100 p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow flex flex-col gap-4"
+              >
+                <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className="text-[10px] font-mono text-slate-400 uppercase tracking-tighter">
+                        #{order.id.slice(0, 8)}
+                      </span>
+                      <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase ${getStatusStyles(order.status)}`}>
+                        {order.status.replace('_', ' ')}
+                      </span>
+                    </div>
+
+                    <h3 className="text-xl font-bold text-slate-900 leading-tight">
+                      {order.order_name || "Untitled Request"}
+                    </h3>
+
+                    {order.description && (
+                      <p className="text-slate-600 text-sm mt-1 mb-3 line-clamp-2 italic">
+                        "{order.description}"
+                      </p>
+                    )}
+
+                    <div className="flex flex-wrap gap-2 items-center mt-2">
+                      <span className="bg-slate-100 text-slate-700 text-[11px] px-2 py-0.5 rounded font-medium">
+                        {order.order_items?.[0]?.service_type || "Printing Service"}
+                      </span>
+                      <p className="text-sm text-slate-500">
+                        {order.order_items?.[0]?.paper_size} • {order.order_items?.[0]?.color_mode} • {order.order_items?.[0]?.print_sides} • Qty: {order.order_items?.[0]?.quantity}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="text-right flex flex-col items-end justify-start pt-1 shrink-0">
+                    <span className="text-sm font-semibold text-slate-700">
+                      {new Date(order.created_at).toLocaleDateString('en-GB', {
+                        day: 'numeric', 
+                        month: 'short', 
+                        year: 'numeric'
+                      })}
+                    </span>
+                    <span className="text-xs text-slate-400 mt-0.5">
+                      {new Date(order.created_at).toLocaleTimeString('en-GB', { 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                      })}
+                    </span>
+                  </div>
                 </div>
 
-                <h3 className="text-xl font-bold text-slate-900 leading-tight">
-                  {order.order_name || "Untitled Request"}
-                </h3>
-
-                {order.description && (
-                  <p className="text-slate-600 text-sm mt-1 mb-3 line-clamp-2 italic">
-                    "{order.description}"
-                  </p>
+                {/* ✨ Dynamic Feedback Render Block */}
+                {hasFeedback && (
+                  <div className="mt-2 pt-4 border-t border-dashed border-slate-100 flex flex-col gap-1.5 bg-amber-50/20 p-3 rounded-xl border border-amber-500/5">
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs font-bold text-slate-700 mr-1">Your Rating:</span>
+                      {Array.from({ length: 5 }).map((_, index) => (
+                        <span 
+                          key={index} 
+                          className={`text-sm ${index < (feedbackItem.rating || 0) ? "text-amber-400" : "text-slate-200"}`}
+                        >
+                          ★
+                        </span>
+                      ))}
+                    </div>
+                    {feedbackItem.comments && (
+                      <p className="text-xs text-slate-600 italic leading-relaxed">
+                        "{feedbackItem.comments}"
+                      </p>
+                    )}
+                  </div>
                 )}
 
-                <div className="flex flex-wrap gap-2 items-center mt-2">
-                   <span className="bg-slate-100 text-slate-700 text-[11px] px-2 py-0.5 rounded font-medium">
-                    {order.order_items[0]?.service_type}
-                   </span>
-                   <p className="text-sm text-slate-500">
-                    {order.order_items[0]?.paper_size} • {order.order_items[0]?.color_mode} • {order.order_items[0]?.print_sides} • Qty: {order.order_items[0]?.quantity}
-                  </p>
-                </div>
               </div>
-
-              <div className="text-right flex flex-col items-end justify-start pt-1">
-                <span className="text-sm font-semibold text-slate-700">
-                  {new Date(order.created_at).toLocaleDateString('en-GB', {
-                    day: 'numeric', 
-                    month: 'short', 
-                    year: 'numeric'
-                  })}
-                </span>
-                <span className="text-xs text-slate-400 mt-0.5">
-                  {new Date(order.created_at).toLocaleTimeString('en-GB', { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                  })}
-                </span>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

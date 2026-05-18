@@ -3,7 +3,63 @@
 import { createClient } from "@/utils/supabase/server";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
+export async function getCompleteOrders() {
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
 
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("Unauthorized");
+
+    // 1. Grab all order_ids directly from feedback table.
+    // (RLS ensures you only get feedback items you are authorized to see)
+    const { data: reviewedFeedback, error: feedbackError } = await supabase
+      .from("feedback")
+      .select("order_id");
+
+    if (feedbackError) throw feedbackError;
+
+    // Clean up the data into a flat array of string IDs
+    const reviewedOrderIds = reviewedFeedback?.map(f => f.order_id).filter(Boolean) || [];
+
+    // 2. Fetch completed orders
+    let query = supabase
+      .from("orders")
+      .select(`
+        id,
+        created_at,
+        status,
+        order_name,
+        description,
+        manager_id,
+        order_items (
+          service_type,
+          paper_size,
+          color_mode,
+          print_sides,
+          quantity,
+          file_url,
+          special_instructions
+        )
+      `)
+      .eq("requester_id", user.id)
+      .eq("status", "completed");
+
+    // 3. EXCLUDE the orders that have already received feedback
+    if (reviewedOrderIds.length > 0) {
+      query = query.not("id", "in", `(${reviewedOrderIds.join(",")})`);
+    }
+
+    const { data, error } = await query.order("created_at", { ascending: false });
+
+    if (error) throw error;
+    return { data };
+
+  } catch (err: any) {
+    console.error("Error fetching orders:", err.message);
+    return { error: err.message };
+  }
+}
 
 export async function getPendingOrdersForManager(page: number = 0, pageSize: number = 8) {
   const cookieStore = await cookies();
@@ -212,6 +268,10 @@ export async function getMyOrders() {
           quantity,
           file_url,
           special_instructions
+        ),
+        feedback!left (
+          rating,
+          comments
         )
       `)
       .eq("requester_id", user.id)
