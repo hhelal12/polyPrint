@@ -1,16 +1,64 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { getMyOrders } from "@/lib/orders/order";
 import Link from "next/link";
 
-export default async function OrdersDashboard() {
-  const { data: orders, error } = await getMyOrders();
+export default function OrdersDashboard() {
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  if (error) {
+  // Filter States
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const { data, error: fetchError } = await getMyOrders();
+        if (fetchError) {
+          setError(fetchError);
+        } else if (data) {
+          setOrders(data);
+        }
+      } catch (err: any) {
+        setError(err.message || "An unexpected error occurred");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrders();
+  }, []);
+
+  if (loading) {
     return (
-      <div className="p-8 text-red-500 bg-red-50 rounded-xl border border-red-100">
-        Error loading orders: {error}
+      <div className="max-w-5xl mx-auto p-6 md:p-10 text-center text-slate-500 text-sm font-medium">
+        Loading your print orders... ⏳
       </div>
     );
   }
+
+  if (error) {
+    return (
+      <div className="max-w-5xl mx-auto p-6 md:p-10">
+        <div className="p-8 text-red-500 bg-red-50 rounded-xl border border-red-100 text-sm">
+          Error loading orders: {error}
+        </div>
+      </div>
+    );
+  }
+
+  // --- Dynamic Filtering Logic ---
+  const filteredOrders = orders.filter((order: any) => {
+    const matchesStatus = statusFilter === "all" || order.status === statusFilter;
+    
+    const searchTarget = (order.order_name || "").toLowerCase() + " " + (order.description || "").toLowerCase();
+    const matchesSearch = searchTarget.includes(searchQuery.toLowerCase());
+
+    return matchesStatus && matchesSearch;
+  });
 
   return (
     <div className="max-w-5xl mx-auto p-6 md:p-10">
@@ -21,24 +69,60 @@ export default async function OrdersDashboard() {
         </div>
         <Link 
           href="/dashboard/new-order" 
-          className="bg-cyan-600 hover:bg-cyan-700 text-white px-6 py-3 rounded-xl font-semibold transition-all shadow-sm"
+          className="bg-cyan-600 hover:bg-cyan-700 text-white px-6 py-3 rounded-xl font-semibold transition-all shadow-sm text-sm"
         >
           + New Request
         </Link>
       </header>
 
-      {!orders || orders.length === 0 ? (
+      {/* --- Search and Filter Control Panel Row --- */}
+      <div className="flex flex-col md:flex-row gap-4 items-center justify-between mb-8">
+        {/* Search Bar Input */}
+        <div className="relative w-full md:max-w-sm">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search orders by name or description..."
+            className="w-full pl-10 pr-4 py-2.5 text-xs border border-slate-200 rounded-xl bg-white focus:outline-none focus:border-cyan-600 focus:ring-1 focus:ring-cyan-600 transition-all text-slate-700 shadow-sm"
+          />
+          <span className="absolute left-3 top-3 text-slate-400 text-xs">🔍</span>
+        </div>
+
+        {/* Filter Tabs Stack */}
+        <div className="flex flex-wrap gap-1.5 w-full md:w-auto">
+          {[
+            { id: "all", label: "All" },
+            { id: "pending_approval", label: "Pending" },
+            { id: "approved", label: "Approved" },
+            { id: "completed", label: "completed" },
+            { id: "rejected", label: "Rejected" },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setStatusFilter(tab.id)}
+              className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all ${
+                statusFilter === tab.id
+                  ? "bg-slate-900 text-white border-slate-900 shadow-sm"
+                  : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* --- Orders Workspace Core Container --- */}
+      {filteredOrders.length === 0 ? (
         <div className="text-center py-20 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
           <div className="text-5xl mb-4">📄</div>
-          <h3 className="text-xl font-semibold text-slate-800">No orders found</h3>
-          <p className="text-slate-500 mt-2">You haven't submitted any print requests yet.</p>
-          <Link href="/dashboard/new-order" className="text-cyan-600 font-medium mt-4 inline-block hover:underline">
-            Submit your first order &rarr;
-          </Link>
+          <h3 className="text-xl font-semibold text-slate-800">No matching orders</h3>
+          <p className="text-slate-500 mt-2">Adjust your filtering constraints or query terms.</p>
         </div>
       ) : (
         <div className="grid gap-6">
-          {orders.map((order: any) => (
+          {filteredOrders.map((order: any) => (
             <div 
               key={order.id} 
               className="bg-white border border-slate-100 p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow flex flex-col md:flex-row md:items-start justify-between gap-4"
@@ -53,12 +137,10 @@ export default async function OrdersDashboard() {
                   </span>
                 </div>
 
-                {/* --- DISPLAY ORDER NAME --- */}
                 <h3 className="text-xl font-bold text-slate-900 leading-tight">
                   {order.order_name || "Untitled Request"}
                 </h3>
 
-                {/* --- DISPLAY DESCRIPTION --- */}
                 {order.description && (
                   <p className="text-slate-600 text-sm mt-1 mb-3 line-clamp-2 italic">
                     "{order.description}"
@@ -104,7 +186,7 @@ function getStatusStyles(status: string) {
       return 'bg-amber-50 text-amber-700 border border-amber-200';
     case 'approved':
       return 'bg-blue-50 text-blue-700 border border-blue-200';
-    case 'ready':
+    case 'completed':
       return 'bg-green-50 text-green-700 border border-green-200';
     case 'rejected':
       return 'bg-red-50 text-red-700 border border-red-200';
