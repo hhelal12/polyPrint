@@ -3,6 +3,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
+
 export async function getCompleteOrders() {
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
@@ -12,7 +13,6 @@ export async function getCompleteOrders() {
     if (!user) throw new Error("Unauthorized");
 
     // 1. Grab all order_ids directly from feedback table.
-    // (RLS ensures you only get feedback items you are authorized to see)
     const { data: reviewedFeedback, error: feedbackError } = await supabase
       .from("feedback")
       .select("order_id");
@@ -22,7 +22,7 @@ export async function getCompleteOrders() {
     // Clean up the data into a flat array of string IDs
     const reviewedOrderIds = reviewedFeedback?.map(f => f.order_id).filter(Boolean) || [];
 
-    // 2. Fetch completed orders
+    // 2. Fetch completed orders (including the new staff_id field)
     let query = supabase
       .from("orders")
       .select(`
@@ -32,6 +32,7 @@ export async function getCompleteOrders() {
         order_name,
         description,
         manager_id,
+        staff_id,
         order_items (
           service_type,
           paper_size,
@@ -117,7 +118,7 @@ export async function getPendingCount() {
 export async function updateOrderStatusAction(
   orderId: string, 
   newStatus: "approved" | "rejected",
-  managerNote?: string // Added parameter
+  managerNote?: string
 ) {
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
@@ -142,7 +143,7 @@ export async function updateOrderStatusAction(
       .update({ 
         status: newStatus, 
         manager_id: user.id,
-        manager_notes: managerNote // Saves the note to DB
+        manager_notes: managerNote
       })
       .eq("id", orderId);
 
@@ -180,7 +181,7 @@ export async function submitOrderAction(formData: {
         requester_id: user.id,
         order_name: formData.order_name,
         description: formData.description,
-        status: "pending_approval", // Ensure this matches your DB Check Constraint
+        status: "pending_approval",
       })
       .select()
       .single();
@@ -241,7 +242,7 @@ export async function approveOrderAction(orderId: string) {
 
 /**
  * Retrieval: Fetch all orders for the current student.
- * Includes nested print specifications.
+ * Includes nested print specifications and the new staff_id field.
  */
 export async function getMyOrders() {
   const cookieStore = await cookies();
@@ -260,6 +261,7 @@ export async function getMyOrders() {
         order_name,
         description,
         manager_id,
+        staff_id,
         order_items (
           service_type,
           paper_size,
