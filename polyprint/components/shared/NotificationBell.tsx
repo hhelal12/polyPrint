@@ -24,65 +24,74 @@ export default function NotificationBell({ currentUserId }: NotificationBellProp
   // Count unread notifications
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
-  // 1. Fetch existing unread or recent notifications on mount
-  useEffect(() => {
+  // Helper utility function to fetch fresh updates in the background safely
+  const fetchRecentNotifications = async () => {
     if (!currentUserId) return;
+    
+    console.log("🔄 Background syncing recent notifications from database...");
+    const { data, error } = await supabase
+      .from("notifications")
+      .select("*")
+      .eq("user_id", currentUserId)
+      .order("created_at", { ascending: false })
+      .limit(10);
 
-    const fetchNotifications = async () => {
-      const { data, error } = await supabase
-        .from("notifications")
-        .select("*")
-        .eq("user_id", currentUserId)
-        .order("created_at", { ascending: false })
-        .limit(10);
+    if (!error && data) {
+      setNotifications(data);
+    }
+  };
 
-      if (!error && data) {
-        setNotifications(data);
-      }
-    };
-
-    fetchNotifications();
+  // 1. Initial Fetch on Component Mount
+  useEffect(() => {
+    fetchRecentNotifications();
   }, [currentUserId, supabase]);
 
-  // 2. Listen to Real-Time INSERT events to catch notifications instantly
+  // 2. Cleaned and Fixed Real-Time System Listener Setup
   useEffect(() => {
     if (!currentUserId) {
       console.log("⚠️ Realtime blocked: Missing currentUserId inside NotificationBell.");
       return;
     }
 
-    console.log(`📡 Opening Realtime channel connection for user_id: ${currentUserId}`);
+    console.log(`📡 Spawning live websocket channel for user: ${currentUserId}`);
 
     const channel = supabase
-      .channel(`navbar-notifications-${currentUserId}`)
+      .channel(`navbar-live-feed-${currentUserId}`)
       .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
           table: "notifications",
-          filter: `user_id=eq.${currentUserId}`,
+          // 💡 FIXED: Removed fragile string filter block that breaks on UUID casting types
         },
         (payload) => {
-          console.log("🔥 New real-time notification captured!", payload);
-          const newNotif = payload.new as Notification;
-          setNotifications((prev) => [newNotif, ...prev.slice(0, 9)]);
+          console.log("🔥 LIVE DATABASE INSERT OVER INTERCEPTOR:", payload);
+          
+          const newNotif = payload.new as any;
+
+          // Perform a type-safe string verification on the payload inside the event handler
+          if (newNotif && String(newNotif.user_id) === String(currentUserId)) {
+            console.log("✅ Match verified! Injecting item instantly into component layout state.");
+            setNotifications((prev) => [newNotif as Notification, ...prev.slice(0, 9)]);
+          } else {
+            // Fallback safety layer: run a fast background sync if structural formats mismatch
+            console.log("⚠️ Structural payload change detected, parsing via background proxy...");
+            fetchRecentNotifications();
+          }
         }
       )
       .subscribe((status) => {
-        console.log(`🔌 Subscription status for channel navbar-notifications-${currentUserId}:`, status);
-        if (status === "CHANNEL_ERROR") {
-          console.error(" Realtime connection failed. Check your Supabase RLS policies or Dashboard Realtime toggle.");
-        }
+        console.log(`🔌 Live Stream Connection Sync Status:`, status);
       });
 
     return () => {
-      console.log(`🔌 Disconnecting Realtime channel for user: ${currentUserId}`);
+      console.log("🔌 Disconnecting real-time channel connection...");
       supabase.removeChannel(channel);
     };
   }, [currentUserId, supabase]);
 
-  // Mark all notifications as read when the user closes the dropdown
+  // 3. Mark all notifications as read when closing the dropdown drawer
   useEffect(() => {
     const handleClickOutside = async (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -110,21 +119,20 @@ export default function NotificationBell({ currentUserId }: NotificationBellProp
 
     setNotifications((prev) => prev.filter((n) => n.id !== id));
 
-    // Delete directly from the Supabase database
     const { error } = await supabase
       .from("notifications")
       .delete()
       .eq("id", id)
-      .eq("user_id", currentUserId); // Guard rule validation alignment
+      .eq("user_id", currentUserId);
 
     if (error) {
-      console.error(" Failed to remove notification from DB:", error);
+      console.error("Failed to remove notification from DB:", error);
     }
   };
 
   return (
     <div className="relative" ref={dropdownRef}>
-      {/* Bell Button */}
+      {/* Bell Button Icon */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-2 text-gray-500 hover:text-[#3CCFD0] transition-colors rounded-full hover:bg-gray-100 focus:outline-none"
@@ -151,6 +159,7 @@ export default function NotificationBell({ currentUserId }: NotificationBellProp
         )}
       </button>
 
+      {/* Expanded Inbox Dropdown List Container */}
       {isOpen && (
         <div className="absolute right-0 mt-2 w-80 rounded-xl border border-gray-100 bg-white shadow-lg ring-1 ring-black/5 z-50 overflow-hidden">
           <div className="p-4 border-b border-gray-50 bg-gray-50/50 flex justify-between items-center">
@@ -216,7 +225,7 @@ export default function NotificationBell({ currentUserId }: NotificationBellProp
               ))
             ) : (
               <div className="p-8 text-center text-xs text-gray-400 font-medium">
-                Your notification inbox is clean! 🌟
+                Your notification inbox is clean! 
               </div>
             )}
           </div>

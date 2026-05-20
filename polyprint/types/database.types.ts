@@ -210,6 +210,7 @@ export type Database = {
           manager_notes: string | null
           order_name: string | null
           requester_id: string
+          staff_id: string | null
           status: string | null
           total_price: number | null
         }
@@ -221,6 +222,7 @@ export type Database = {
           manager_notes?: string | null
           order_name?: string | null
           requester_id: string
+          staff_id?: string | null
           status?: string | null
           total_price?: number | null
         }
@@ -232,10 +234,18 @@ export type Database = {
           manager_notes?: string | null
           order_name?: string | null
           requester_id?: string
+          staff_id?: string | null
           status?: string | null
           total_price?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_orders_staff"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "orders_manager_id_fkey"
             columns: ["manager_id"]

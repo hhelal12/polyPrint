@@ -35,7 +35,7 @@ export default async function Navbar() {
       { label: "Dashboard", href: "/dashboard" },
       { label: "Manage Order", href: "/orders/manage" },
       { label: "Material Order", href: "/orders/material" },
-      { label: "Help", href: "/help" }
+      { label: "Feedback", href: "/feedback/staff" }
     ],
     manager: [
       { label: "Dashboard", href: "/dashboard" },
