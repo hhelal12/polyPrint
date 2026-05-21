@@ -43,7 +43,8 @@ export default async function Navbar() {
     ],
     line_manager: [ // Maps database snake_case structure cleanly
       { label: "Dashboard", href: "/dashboard" },
-      { label: "Approvals", href: "/approvals" } 
+      { label: "Approvals", href: "/approvals" },
+      { label: "Feedback", href: "/feedback/manger" },
     ],
     admin: [
       { label: "Dashboard", href: "/dashboard" },
