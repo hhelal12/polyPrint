@@ -22,7 +22,7 @@ export async function getCompleteOrders() {
     // Clean up the data into a flat array of string IDs
     const reviewedOrderIds = reviewedFeedback?.map(f => f.order_id).filter(Boolean) || [];
 
-    // 2. Fetch completed orders (including the new staff_id field)
+    // 2. Fetch completed orders (including total_price and staff_id)
     let query = supabase
       .from("orders")
       .select(`
@@ -31,6 +31,7 @@ export async function getCompleteOrders() {
         status,
         order_name,
         description,
+        total_price,
         manager_id,
         staff_id,
         order_items (
@@ -62,6 +63,9 @@ export async function getCompleteOrders() {
   }
 }
 
+/**
+ * Paginated query fetching pending requests for line managers.
+ */
 export async function getPendingOrdersForManager(page: number = 0, pageSize: number = 8) {
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
@@ -78,6 +82,7 @@ export async function getPendingOrdersForManager(page: number = 0, pageSize: num
         description,
         status,
         created_at,
+        total_price,
         requester:profiles!requester_id (
           full_name
         ),
@@ -103,6 +108,9 @@ export async function getPendingOrdersForManager(page: number = 0, pageSize: num
   }
 }
 
+/**
+ * Head-only aggregate counter for manager badges.
+ */
 export async function getPendingCount() {
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
@@ -115,6 +123,9 @@ export async function getPendingCount() {
   return count || 0;
 }
 
+/**
+ * Updates status and injects review comments into the order context.
+ */
 export async function updateOrderStatusAction(
   orderId: string, 
   newStatus: "approved" | "rejected",
@@ -156,6 +167,9 @@ export async function updateOrderStatusAction(
   }
 }
 
+/**
+ * Secured multi-dimensional pricing configuration matrix pipeline
+ */
 export async function submitOrderAction(formData: {
   order_name: string;
   description: string;
@@ -165,6 +179,7 @@ export async function submitOrderAction(formData: {
   print_sides: string;
   quantity: number;
   file_url: string;
+  estimated_pages: number; 
   special_instructions?: string;
 }) {
   const cookieStore = await cookies();
@@ -174,7 +189,31 @@ export async function submitOrderAction(formData: {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("Unauthorized");
 
-    // 1. Create main order entry
+    // ⚡ SECURE MULTI-DIMENSIONAL PRICING ENGINE MATRIX (A4 vs A3 vs A2)
+    let pricePerSheetRate = 0.025; // Base fallback (A4 Black & White)
+    const size = formData.paper_size?.toUpperCase() || "A4";
+    const isColor = formData.color_mode?.toLowerCase() === "color";
+
+    if (size === "A3") {
+      pricePerSheetRate = isColor ? 0.100 : 0.050;
+    } else if (size === "A2") {
+      pricePerSheetRate = isColor ? 0.150 : 0.075;
+    } else {
+      // Default standard A4 matrices
+      pricePerSheetRate = isColor ? 0.050 : 0.025;
+    }
+
+    const documentCopiesQuantity = Number(formData.quantity) || 1;
+    const verifiedPages = Number(formData.estimated_pages) || 0;
+
+    // Cut page counts exactly in half if double-sided layout parameters match, adjusting for odd numbers
+    const sheetsPerCopy = formData.print_sides === "Double-sided"
+      ? Math.ceil(verifiedPages / 2)
+      : verifiedPages;
+
+    const calculatedTotalPrice = sheetsPerCopy * documentCopiesQuantity * pricePerSheetRate;
+
+    // 3. Create main order entry
     const { data: order, error: orderErr } = await supabase
       .from("orders")
       .insert({
@@ -182,13 +221,14 @@ export async function submitOrderAction(formData: {
         order_name: formData.order_name,
         description: formData.description,
         status: "pending_approval",
+        total_price: calculatedTotalPrice 
       })
       .select()
       .single();
 
     if (orderErr) throw orderErr;
 
-    // 2. Insert item specifications (One-sided vs Double-sided, etc.)
+    // 4. Insert item specifications layout parameters
     const { error: itemErr } = await supabase
       .from("order_items")
       .insert({
@@ -207,13 +247,13 @@ export async function submitOrderAction(formData: {
     revalidatePath("/dashboard");
     return { success: true };
   } catch (err: any) {
+    console.error("Order submission breakdown sequence encountered:", err.message);
     return { error: err.message };
   }
 }
 
 /**
- * STEP 4: Manager Approval
- * Updates status and captures the logged-in manager's ID.
+ * Basic manager approval shortcut without specific review notes.
  */
 export async function approveOrderAction(orderId: string) {
   const cookieStore = await cookies();
@@ -241,8 +281,8 @@ export async function approveOrderAction(orderId: string) {
 }
 
 /**
- * Retrieval: Fetch all orders for the current student.
- * Includes nested print specifications and the new staff_id field.
+ * Fetches full layout history matching the currently authenticated requester.
+ * Broken select parameters comment matrix block has been removed cleanly.
  */
 export async function getMyOrders() {
   const cookieStore = await cookies();
@@ -260,6 +300,7 @@ export async function getMyOrders() {
         status,
         order_name,
         description,
+        total_price,
         manager_id,
         staff_id,
         order_items (

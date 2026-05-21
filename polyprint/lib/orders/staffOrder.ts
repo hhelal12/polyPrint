@@ -23,6 +23,7 @@ export async function getApprovedOrdersForStaff() {
             id,
             status,
             order_name,
+            total_price,
             manager_notes, 
             created_at,
             staff_id,

@@ -3,22 +3,26 @@
 import { useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { submitOrderAction } from "@/lib/orders/order";
+import { getPdfPageCountAction } from "@/lib/orders/pdfUtils";
 import { useRouter } from "next/navigation";
 
 export default function NewOrderPage() {
     const router = useRouter();
     const supabase = createClient();
     const [loading, setLoading] = useState(false);
-    const [file, setFile] = useState<File | null>(null);
+    const [uploadingFile, setUploadingFile] = useState(false);
+    const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+    const [localFileObject, setLocalFileObject] = useState<File | null>(null);
 
     const [formData, setFormData] = useState({
         order_name: "",
         description: "",
         service_type: "Printing",
         paper_size: "A4",
-        color_mode: "Black & White",
+        color_mode: "black_and_white",
         print_sides: "One-sided",
         quantity: 1,
+        detected_pages: 0, 
         special_instructions: ""
     });
 
@@ -28,29 +32,72 @@ export default function NewOrderPage() {
         return (bytes / Math.pow(1024, i)).toFixed(2) + " " + ["Bytes", "KB", "MB"][i];
     };
 
+    // ⚡ SHEET-AWARE & SIZE-AWARE MULTI-DIMENSIONAL LIVE PRICING MATRIX
+    let ratePerSheet = 0.025; // Default fallback rate configuration
+    const isColorMode = formData.color_mode === "color";
+
+    if (formData.paper_size === "A3") {
+        ratePerSheet = isColorMode ? 0.100 : 0.050;
+    } else if (formData.paper_size === "A2") {
+        ratePerSheet = isColorMode ? 0.150 : 0.075; // ◄ MATCHES BACKEND: Color = 150 Fils, B&W = 75 Fils
+    } else {
+        // Standard A4 Layout Rates
+        ratePerSheet = isColorMode ? 0.050 : 0.025;
+    }
+    
+    // Calculates physical sheets needed. Handles odd double sided counts cleanly.
+    const sheetsPerCopy = formData.print_sides === "Double-sided" 
+        ? Math.ceil(formData.detected_pages / 2) 
+        : formData.detected_pages;
+
+    const dynamicTotalCost = sheetsPerCopy * formData.quantity * ratePerSheet;
+
+    async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+        const selectedFile = e.target.files?.[0];
+        if (!selectedFile) return;
+
+        setLocalFileObject(selectedFile);
+        setUploadingFile(true);
+
+        try {
+            const generatedPathName = `${Date.now()}_${selectedFile.name}`;
+            const { error: uploadError } = await supabase.storage
+                .from("print-files")
+                .upload(generatedPathName, selectedFile);
+
+            if (uploadError) throw uploadError;
+            setUploadedFileName(generatedPathName);
+
+            const actualPages = await getPdfPageCountAction(generatedPathName);
+
+            setFormData(prev => ({
+                ...prev,
+                detected_pages: actualPages
+            }));
+
+        } catch (err: any) {
+            alert(`File pipeline optimization execution breakdown: ${err.message}`);
+        } finally {
+            setUploadingFile(false);
+        }
+    }
+
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
+        if (!uploadedFileName) {
+            alert("Please wait for your material document attachment file to finish analyzing.");
+            return;
+        }
         setLoading(true);
 
         try {
-            if (!file) throw new Error("Please upload a PDF file");
-
-            // 1. Upload file to bucket
-            const fileName = `${Date.now()}_${file.name}`;
-            const { error: uploadError } = await supabase.storage
-                .from("print-files")
-                .upload(fileName, file);
-
-            if (uploadError) throw uploadError;
-
-            // 2. Submit order using updated action
             const result = await submitOrderAction({
                 ...formData,
-                file_url: fileName,
+                file_url: uploadedFileName,
+                estimated_pages: formData.detected_pages 
             });
 
             if (result.error) throw new Error(result.error);
-
             router.push("/dashboard");
         } catch (err: any) {
             alert(err.message);
@@ -67,7 +114,6 @@ export default function NewOrderPage() {
             </header>
 
             <form onSubmit={handleSubmit} className="space-y-6">
-                {/* --- NEW: Order Identity Fields --- */}
                 <div className="space-y-4">
                     <div>
                         <label className="block text-sm font-semibold text-slate-700 mb-2">Order Name / Title</label>
@@ -75,7 +121,7 @@ export default function NewOrderPage() {
                             type="text"
                             required
                             placeholder="e.g., IT7099 Weekly Report"
-                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 outline-none"
+                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 outline-none text-slate-800 transition-all"
                             value={formData.order_name}
                             onChange={(e) => setFormData({ ...formData, order_name: e.target.value })}
                         />
@@ -84,7 +130,7 @@ export default function NewOrderPage() {
                         <label className="block text-sm font-semibold text-slate-700 mb-2">Description</label>
                         <textarea
                             placeholder="Briefly describe what this print is for..."
-                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 outline-none h-24"
+                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 outline-none h-24 text-slate-800 transition-all"
                             value={formData.description}
                             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                         />
@@ -93,29 +139,28 @@ export default function NewOrderPage() {
 
                 <hr className="border-slate-100" />
 
-                {/* Technical Specifications */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label className="block text-sm font-semibold text-slate-700 mb-2">Service Type</label>
                         <select
-                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 outline-none"
+                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 outline-none text-slate-800"
                             value={formData.service_type}
                             onChange={(e) => setFormData({ ...formData, service_type: e.target.value })}
                         >
-                            <option>Printing</option>
-                            <option>Scanning</option>
-                            <option>Binding</option>
+                            <option value="Printing">Printing</option>
+                            <option value="Scanning">Scanning</option>
+                            <option value="Binding">Binding</option>
                         </select>
                     </div>
                     <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-2">Quantity</label>
+                        <label className="block text-sm font-semibold text-slate-700 mb-2">Quantity (Copies)</label>
                         <input
                             type="number"
                             min="1"
                             required
-                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 outline-none"
+                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 outline-none text-slate-800"
                             value={isNaN(formData.quantity) ? "" : formData.quantity}
-                            onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) })}
+                            onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 1 })}
                         />
                     </div>
                 </div>
@@ -124,36 +169,35 @@ export default function NewOrderPage() {
                     <div>
                         <label className="block text-sm font-semibold text-slate-700 mb-2">Paper Size</label>
                         <select
-                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 outline-none"
+                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 outline-none text-slate-800"
                             value={formData.paper_size}
                             onChange={(e) => setFormData({ ...formData, paper_size: e.target.value })}
                         >
-                            <option>A4</option>
-                            <option>A3</option>
-                            <option>A2</option>
+                            <option value="A4">A4</option>
+                            <option value="A3">A3</option>
+                            <option value="A2">A2</option>
                         </select>
                     </div>
                     <div>
                         <label className="block text-sm font-semibold text-slate-700 mb-2">Color Mode</label>
                         <select
-                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 outline-none"
+                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 outline-none text-slate-800"
                             value={formData.color_mode}
                             onChange={(e) => setFormData({ ...formData, color_mode: e.target.value })}
                         >
-                            <option>Black & White</option>
-                            <option>Full Color</option>
+                            <option value="black_and_white">Black & White</option>
+                            <option value="color">Full Color</option>
                         </select>
                     </div>
-                    {/* --- NEW: Print Sides --- */}
                     <div>
                         <label className="block text-sm font-semibold text-slate-700 mb-2">Sides</label>
                         <select
-                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 outline-none"
+                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 outline-none text-slate-800"
                             value={formData.print_sides}
                             onChange={(e) => setFormData({ ...formData, print_sides: e.target.value })}
                         >
-                            <option>One-sided</option>
-                            <option>Double-sided</option>
+                            <option value="One-sided">One-sided</option>
+                            <option value="Double-sided">Double-sided</option>
                         </select>
                     </div>
                 </div>
@@ -162,26 +206,69 @@ export default function NewOrderPage() {
                     <input
                         type="file"
                         accept=".pdf"
-                        onChange={(e) => setFile(e.target.files?.[0] || null)}
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        disabled={uploadingFile}
+                        onChange={handleFileChange}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
                     />
                     <div className="flex flex-col items-center">
-                        <div className="w-10 h-10 bg-cyan-50 rounded-full flex items-center justify-center mb-3 transition-transform group-hover:scale-110">
-                            <span className="text-cyan-600 font-bold text-xs">PDF</span>
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-3 transition-all ${uploadingFile ? "bg-amber-50 animate-pulse animate-spin" : "bg-cyan-50 group-hover:scale-110"}`}>
+                            <span className={`font-bold text-xs ${uploadingFile ? "text-amber-600" : "text-cyan-600"}`}>
+                                {uploadingFile ? "⚙️" : "PDF"}
+                            </span>
                         </div>
                         <p className="text-slate-600 text-sm font-medium">
-                            {file ? <span className="text-slate-900">{file.name}</span> : "Upload Material PDF"}
+                            {uploadingFile ? (
+                                <span className="text-amber-600 font-semibold animate-pulse">Uploading and Parsing Page Specs...</span>
+                            ) : localFileObject ? (
+                                <span className="text-slate-900 font-semibold">{localFileObject.name}</span>
+                            ) : (
+                                "Upload Material PDF"
+                            )}
                         </p>
-                        {file && <p className="text-cyan-600 text-xs font-mono mt-1">{formatFileSize(file.size)}</p>}
+                        {localFileObject && !uploadingFile && (
+                            <p className="text-cyan-600 text-xs font-mono mt-1">{formatFileSize(localFileObject.size)}</p>
+                        )}
+                    </div>
+                </div>
+
+                {/* DYNAMIC REAL-TIME INVOICE VALUE BOX BLOCK */}
+                <div className="bg-slate-900 border border-slate-950 rounded-2xl p-5 flex flex-col sm:flex-row gap-4 items-center justify-between text-white shadow-xl">
+                    <div>
+                        <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                            Verified Document Profile
+                        </span>
+                        <div className="text-sm text-slate-200 font-medium">
+                            {formData.detected_pages > 0 ? (
+                                <div className="space-y-0.5">
+                                    <div>📄 Total Document Pages: <strong className="text-cyan-400 font-mono text-base">{formData.detected_pages}</strong></div>
+                                    <div className="text-xs text-slate-400">
+                                        Using <strong className="text-slate-200 font-mono">{sheetsPerCopy}</strong> sheet{sheetsPerCopy > 1 ? 's' : ''} ({formData.paper_size} • {formData.print_sides.toLowerCase()}) at <strong className="text-cyan-400 font-mono">BHD {ratePerSheet.toFixed(3)}</strong> each
+                                    </div>
+                                </div>
+                            ) : uploadingFile ? (
+                                <span className="text-amber-400 italic">Analyzing structural array...</span>
+                            ) : (
+                                <span className="text-slate-400">No document parsed yet.</span>
+                            )}
+                        </div>
+                    </div>
+                    
+                    <div className="text-right w-full sm:w-auto border-t sm:border-t-0 pt-3 sm:pt-0 border-slate-800 flex sm:flex-col justify-between sm:justify-center items-center sm:items-end">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">
+                            Calculated Final Cost
+                        </span>
+                        <span className="text-2xl font-black text-cyan-400 font-mono tracking-tight">
+                            BHD {dynamicTotalCost.toFixed(3)}
+                        </span>
                     </div>
                 </div>
 
                 <button
                     type="submit"
-                    disabled={loading}
+                    disabled={loading || uploadingFile || !uploadedFileName}
                     className="w-full py-4 bg-slate-900 text-white rounded-xl font-bold text-lg hover:bg-slate-800 disabled:bg-slate-300 shadow-lg shadow-slate-900/10 transition-all"
                 >
-                    {loading ? "Processing..." : "Send for Approval"}
+                    {loading ? "Registering Request Block..." : "Send for Approval"}
                 </button>
             </form>
         </div>
