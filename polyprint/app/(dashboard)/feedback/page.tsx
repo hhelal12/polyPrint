@@ -71,9 +71,10 @@ export default function StudentFeedbackPage() {
             // If feedback already exists, ignore this realtime update event completely
             if (existingFeedback) return;
 
+            // Added total_price column to properties requested on raw real-time inserts
             const { data: newItem } = await supabase
               .from("orders")
-              .select("id, order_name, created_at, status, order_items ( service_type, quantity )")
+              .select("id, order_name, created_at, status, total_price, order_items ( service_type, quantity )")
               .eq("id", updatedRow.id)
               .single();
 
@@ -174,9 +175,19 @@ export default function StudentFeedbackPage() {
                 <div className="flex-1 flex flex-col justify-between">
                   <div>
                     <h3 className="text-xl font-extrabold text-slate-900">{order.order_name || "Untitled Request"}</h3>
-                    <p className="text-xs text-slate-500 mt-1">
-                      Type: <span className="font-semibold text-slate-800">{order.order_items?.[0]?.service_type || "Standard Printing"}</span>
-                    </p>
+                    
+                    <div className="flex flex-wrap items-center gap-3 mt-2">
+                      <p className="text-xs text-slate-500">
+                        Type: <span className="font-semibold text-slate-800">{order.order_items?.[0]?.service_type || "Standard Printing"}</span>
+                      </p>
+                      
+                      <span className="text-slate-300 text-xs">•</span>
+                      
+                      {/* 💰 DYNAMIC TOTAL PRICE DATA BLOCK */}
+                      <p className="text-xs text-slate-500">
+                        Total Price: <span className="font-mono font-bold text-cyan-600 bg-cyan-50 border border-cyan-100/50 px-2 py-0.5 rounded-lg">BHD {(Number(order.total_price) || 0).toFixed(3)}</span>
+                      </p>
+                    </div>
                   </div>
 
                   <div className="mt-6">

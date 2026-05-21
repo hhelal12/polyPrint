@@ -1,4 +1,3 @@
-// app/(dashboard)/orders/manage/page.tsx
 import { getApprovedOrdersForStaff } from "@/lib/orders/staffOrder";
 import { createClient } from "@/utils/supabase/server";
 import { cookies } from "next/headers";
@@ -28,7 +27,7 @@ export default async function ManageOrdersPage() {
     return (
         <ManageOrdersClient 
             fullName={profile?.full_name || "Staff Member"} 
-            initialOrders={initialOrders} 
+            initialOrders={initialOrders as any} 
         />
     );
 }

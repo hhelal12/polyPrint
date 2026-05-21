@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { getMyOrders } from "@/lib/orders/order";
 import Link from "next/link";
+import OrderFilters from "@/components/orders/OrderFilters";
 
 export default function OrdersDashboard() {
   const [orders, setOrders] = useState<any[]>([]);
@@ -12,6 +13,13 @@ export default function OrdersDashboard() {
   // Filter States
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [maxPrice, setMaxPrice] = useState<number>(500); // ◄ INITIALLY ALLOW ALL UP TO 500 BHD
+  const [colorFilter, setColorFilter] = useState("all");   // ◄ Added color filter state
+  const [sidesFilter, setSidesFilter] = useState("all");   // ◄ Added print sides filter state
+
+  // Pagination States
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -32,6 +40,11 @@ export default function OrdersDashboard() {
     fetchOrders();
   }, []);
 
+  // Reset page window index safely when any filtering parameter shifts
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, maxPrice, colorFilter, sidesFilter]);
+
   if (loading) {
     return (
       <div className="max-w-5xl mx-auto p-6 md:p-10 text-center text-slate-500 text-sm font-medium">
@@ -50,19 +63,46 @@ export default function OrdersDashboard() {
     );
   }
 
-  // --- Dynamic Filtering Logic ---
+  // --- Dynamic Filtering Pipeline Matrix ---
   const filteredOrders = orders.filter((order: any) => {
+    // 1. Status Constraint Check
     const matchesStatus = statusFilter === "all" || order.status === statusFilter;
     
+    // 2. Text Search Constraint Check
     const searchTarget = (order.order_name || "").toLowerCase() + " " + (order.description || "").toLowerCase();
     const matchesSearch = searchTarget.includes(searchQuery.toLowerCase());
 
-    return matchesStatus && matchesSearch;
+    // 3. 💰 Slider Price Constraint Range Boundary Check
+    const finalPrice = Number(order.total_price) || 0;
+    const matchesPrice = finalPrice <= maxPrice;
+
+    // 🎨 4. Nested Print Parameters Filter Logic
+    const orderItem = order.order_items?.[0];
+
+    // Map DB configurations securely to filter option IDs
+    const itemColorMode = orderItem?.color_mode?.toLowerCase() === "full_color" || orderItem?.color_mode?.toLowerCase() === "color" 
+      ? "full_color" 
+      : "black_white";
+
+    const itemPrintSides = orderItem?.print_sides?.toLowerCase() === "double-sided" || orderItem?.print_sides?.toLowerCase() === "double_sided"
+      ? "double_sided"
+      : "one_sided";
+
+    const matchesColor = colorFilter === "all" || itemColorMode === colorFilter;
+    const matchesSides = sidesFilter === "all" || itemPrintSides === sidesFilter;
+
+    return matchesStatus && matchesSearch && matchesPrice && matchesColor && matchesSides;
   });
+
+  // --- Pagination Slice Computations ---
+  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / itemsPerPage));
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentPageItems = filteredOrders.slice(indexOfFirstItem, indexOfLastItem);
 
   return (
     <div className="max-w-5xl mx-auto p-6 md:p-10">
-      <header className="flex justify-between items-center mb-10">
+      <header className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">My Print Orders</h1>
           <p className="text-slate-500">Track your CDOFS requests and approval status.</p>
@@ -75,43 +115,19 @@ export default function OrdersDashboard() {
         </Link>
       </header>
 
-      {/* --- Search and Filter Control Panel Row --- */}
-      <div className="flex flex-col md:flex-row gap-4 items-center justify-between mb-8">
-        {/* Search Bar Input */}
-        <div className="relative w-full md:max-w-sm">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search orders by name or description..."
-            className="w-full pl-10 pr-4 py-2.5 text-xs border border-slate-200 rounded-xl bg-white focus:outline-none focus:border-cyan-600 focus:ring-1 focus:ring-cyan-600 transition-all text-slate-700 shadow-sm"
-          />
-          <span className="absolute left-3 top-3 text-slate-400 text-xs">🔍</span>
-        </div>
-
-        {/* Filter Tabs Stack */}
-        <div className="flex flex-wrap gap-1.5 w-full md:w-auto">
-          {[
-            { id: "all", label: "All" },
-            { id: "pending_approval", label: "Pending" },
-            { id: "approved", label: "Approved" },
-            { id: "completed", label: "Completed" },
-            { id: "rejected", label: "Rejected" },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setStatusFilter(tab.id)}
-              className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all ${
-                statusFilter === tab.id
-                  ? "bg-slate-900 text-white border-slate-900 shadow-sm"
-                  : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* ⚙️ EMBEDDED FILTER COMPONENT LAYER WITH NEW PROPS LINKED */}
+      <OrderFilters 
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        statusFilter={statusFilter}
+        setStatusFilter={setStatusFilter}
+        maxPrice={maxPrice}
+        setMaxPrice={setMaxPrice}
+        colorFilter={colorFilter}
+        setColorFilter={setColorFilter}
+        sidesFilter={sidesFilter}
+        setSidesFilter={setSidesFilter}
+      />
 
       {/* --- Orders Workspace Core Container --- */}
       {filteredOrders.length === 0 ? (
@@ -121,90 +137,139 @@ export default function OrdersDashboard() {
           <p className="text-slate-500 mt-2">Adjust your filtering constraints or query terms.</p>
         </div>
       ) : (
-        <div className="grid gap-6">
-          {filteredOrders.map((order: any) => {
-            // Extract the feedback details if present
-            const feedbackItem = Array.isArray(order.feedback) ? order.feedback[0] : order.feedback;
-            const hasFeedback = order.status === "completed" && feedbackItem;
+        <div className="space-y-6">
+          <div className="grid gap-6">
+            {currentPageItems.map((order: any) => {
+              const feedbackItem = Array.isArray(order.feedback) ? order.feedback[0] : order.feedback;
+              const hasFeedback = order.status === "completed" && feedbackItem;
 
-            return (
-              <div 
-                key={order.id} 
-                className="bg-white border border-slate-100 p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow flex flex-col gap-4"
-              >
-                <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <span className="text-[10px] font-mono text-slate-400 uppercase tracking-tighter">
-                        #{order.id.slice(0, 8)}
-                      </span>
-                      <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase ${getStatusStyles(order.status)}`}>
-                        {order.status.replace('_', ' ')}
-                      </span>
-                    </div>
-
-                    <h3 className="text-xl font-bold text-slate-900 leading-tight">
-                      {order.order_name || "Untitled Request"}
-                    </h3>
-
-                    {order.description && (
-                      <p className="text-slate-600 text-sm mt-1 mb-3 line-clamp-2 italic">
-                        "{order.description}"
-                      </p>
-                    )}
-
-                    <div className="flex flex-wrap gap-2 items-center mt-2">
-                      <span className="bg-slate-100 text-slate-700 text-[11px] px-2 py-0.5 rounded font-medium">
-                        {order.order_items?.[0]?.service_type || "Printing Service"}
-                      </span>
-                      <p className="text-sm text-slate-500">
-                        {order.order_items?.[0]?.paper_size} • {order.order_items?.[0]?.color_mode} • {order.order_items?.[0]?.print_sides} • Qty: {order.order_items?.[0]?.quantity}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="text-right flex flex-col items-end justify-start pt-1 shrink-0">
-                    <span className="text-sm font-semibold text-slate-700">
-                      {new Date(order.created_at).toLocaleDateString('en-GB', {
-                        day: 'numeric', 
-                        month: 'short', 
-                        year: 'numeric'
-                      })}
-                    </span>
-                    <span className="text-xs text-slate-400 mt-0.5">
-                      {new Date(order.created_at).toLocaleTimeString('en-GB', { 
-                        hour: '2-digit', 
-                        minute: '2-digit' 
-                      })}
-                    </span>
-                  </div>
-                </div>
-
-                {/* ✨ Dynamic Feedback Render Block */}
-                {hasFeedback && (
-                  <div className="mt-2 pt-4 border-t border-dashed border-slate-100 flex flex-col gap-1.5 bg-amber-50/20 p-3 rounded-xl border border-amber-500/5">
-                    <div className="flex items-center gap-1">
-                      <span className="text-xs font-bold text-slate-700 mr-1">Your Rating:</span>
-                      {Array.from({ length: 5 }).map((_, index) => (
-                        <span 
-                          key={index} 
-                          className={`text-sm ${index < (feedbackItem.rating || 0) ? "text-amber-400" : "text-slate-200"}`}
-                        >
-                          ★
+              return (
+                <div 
+                  key={order.id} 
+                  className="bg-white border border-slate-100 p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow flex flex-col gap-4"
+                >
+                  <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <span className="text-[10px] font-mono text-slate-400 uppercase tracking-tighter">
+                          #{order.id.slice(0, 8)}
                         </span>
-                      ))}
-                    </div>
-                    {feedbackItem.comments && (
-                      <p className="text-xs text-slate-600 italic leading-relaxed">
-                        "{feedbackItem.comments}"
-                      </p>
-                    )}
-                  </div>
-                )}
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase ${getStatusStyles(order.status)}`}>
+                          {order.status.replace('_', ' ')}
+                        </span>
+                      </div>
 
-              </div>
-            );
-          })}
+                      <h3 className="text-xl font-bold text-slate-900 leading-tight">
+                        {order.order_name || "Untitled Request"}
+                      </h3>
+
+                      {order.description && (
+                        <p className="text-slate-600 text-sm mt-1 mb-3 line-clamp-2 italic">
+                          "{order.description}"
+                        </p>
+                      )}
+
+                      <div className="flex flex-wrap gap-2 items-center mt-2">
+                        <span className="bg-slate-100 text-slate-700 text-[11px] px-2 py-0.5 rounded font-medium">
+                          {order.order_items?.[0]?.service_type || "Printing Service"}
+                        </span>
+                        <p className="text-sm text-slate-500">
+                          {order.order_items?.[0]?.paper_size} • {order.order_items?.[0]?.color_mode?.replace('_', ' ')} • {order.order_items?.[0]?.print_sides} • Qty: {order.order_items?.[0]?.quantity}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="text-right flex flex-col items-end justify-between self-stretch pt-1 shrink-0 gap-4 md:gap-0">
+                      <div>
+                        <span className="text-sm font-semibold text-slate-700 block">
+                          {new Date(order.created_at).toLocaleDateString('en-GB', {
+                            day: 'numeric', 
+                            month: 'short', 
+                            year: 'numeric'
+                          })}
+                        </span>
+                        <span className="text-xs text-slate-400 mt-0.5 block">
+                          {new Date(order.created_at).toLocaleTimeString('en-GB', { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })}
+                        </span>
+                      </div>
+                      
+                      {/* 💰 Total Pricing Box */}
+                      <div className="bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100 text-right">
+                        <span className="text-[9px] uppercase tracking-wider font-black text-slate-400 block mb-0.5">Total Price</span>
+                        <span className="text-sm font-bold text-cyan-600 font-mono">
+                          BHD {(Number(order.total_price) || 0).toFixed(3)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Feedback Block */}
+                  {hasFeedback && (
+                    <div className="mt-2 pt-4 border-t border-dashed border-slate-100 flex flex-col gap-1.5 bg-amber-50/20 p-3 rounded-xl border border-amber-500/5">
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs font-bold text-slate-700 mr-1">Your Rating:</span>
+                        {Array.from({ length: 5 }).map((_, index) => (
+                          <span 
+                            key={index} 
+                            className={`text-sm ${index < (feedbackItem.rating || 0) ? "text-amber-400" : "text-slate-200"}`}
+                          >
+                            ★
+                          </span>
+                        ))}
+                      </div>
+                      {feedbackItem.comments && (
+                        <p className="text-xs text-slate-600 italic leading-relaxed">
+                          "{feedbackItem.comments}"
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                </div>
+              );
+            })}
+          </div>
+
+          {/* 📑 PAGINATION FOOTER */}
+          <div className="flex items-center justify-between border-t border-slate-100 pt-6 mt-4">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="px-4 py-2 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            >
+              ← Previous
+            </button>
+            
+            <div className="flex items-center gap-2">
+              {Array.from({ length: totalPages }).map((_, index) => {
+                const pageNumber = index + 1;
+                return (
+                  <button
+                    key={pageNumber}
+                    onClick={() => setCurrentPage(pageNumber)}
+                    className={`w-8 h-8 rounded-xl text-xs font-bold transition-all ${
+                      currentPage === pageNumber
+                        ? "bg-slate-900 text-white shadow-sm"
+                        : "text-slate-600 hover:bg-slate-50 border border-transparent hover:border-slate-200"
+                    }`}
+                  >
+                    {pageNumber}
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className="px-4 py-2 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            >
+              Next →
+            </button>
+          </div>
         </div>
       )}
     </div>

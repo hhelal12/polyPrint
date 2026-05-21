@@ -8,7 +8,7 @@ import NotificationBell from './NotificationBell'; // Import the new component
 export default async function Navbar() {
   const data = await getCurrentUser();
 
-  if (!data) return null; 
+  if (!data) return null;
 
   const { fullName, role } = data;
   const userId = data.user.id; // Extract the user ID explicitly to pass down
@@ -26,10 +26,10 @@ export default async function Navbar() {
   const ROLE_NAV_CONFIG = {
     student: [
       { label: "Dashboard", href: "/dashboard" },
-      { label: "New Order", href: "/orders/new" }, 
-      { label: "My Order", href: "/orders" },  
+      { label: "New Order", href: "/orders/new" },
+      { label: "My Order", href: "/orders" },
       { label: "Support", href: "/support" },
-      { label: "My Feedback", href: "/feedback" } 
+      { label: "My Feedback", href: "/feedback" }
     ],
     staff: [
       { label: "Dashboard", href: "/dashboard" },
@@ -39,16 +39,18 @@ export default async function Navbar() {
     ],
     manager: [
       { label: "Dashboard", href: "/dashboard" },
-      { label: "Approvals", href: "/approvals" } 
+      { label: "Approvals", href: "/approvals" }
     ],
     line_manager: [ // Maps database snake_case structure cleanly
       { label: "Dashboard", href: "/dashboard" },
       { label: "Approvals", href: "/approvals" },
       { label: "Feedback", href: "/feedback/manger" },
+      { label: "Analysis", href: "/analysis/manger" },
+
     ],
     admin: [
       { label: "Dashboard", href: "/dashboard" },
-      { label: "Analytics", href: "/analytics" }, 
+      { label: "Analytics", href: "/analytics" },
       { label: "User Management", href: "/users" },
       { label: "Audit Logs", href: "/audit-logs" }
     ],
@@ -66,15 +68,15 @@ export default async function Navbar() {
       <SessionGuard />
 
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
-        
+
         {/* Logo Area */}
         <Link href="/dashboard" className="flex items-center gap-2 group">
-          <Image 
-            src="/logo.svg" 
-            alt="PolyPrint Logo" 
-            width={35} 
-            height={35} 
-            priority 
+          <Image
+            src="/logo.svg"
+            alt="PolyPrint Logo"
+            width={35}
+            height={35}
+            priority
           />
           <span className="text-xl font-extrabold text-[#0D284A] tracking-tight">
             Poly<span className="text-[#3CCFD0]">Print</span>
@@ -84,9 +86,9 @@ export default async function Navbar() {
         {/* Dynamic Navigation Links Based on Role */}
         <div className="hidden md:flex items-center gap-6 text-sm font-semibold text-gray-600">
           {navLinks.map((link) => (
-            <Link 
-              key={link.label} 
-              href={link.href} 
+            <Link
+              key={link.label}
+              href={link.href}
               className="hover:text-[#3CCFD0] transition-colors"
             >
               {link.label}
@@ -96,7 +98,7 @@ export default async function Navbar() {
 
         {/* User Actions */}
         <div className="flex items-center gap-4">
-          
+
           {/* Real-time Notification Dropdown */}
           <NotificationBell currentUserId={userId} />
 
