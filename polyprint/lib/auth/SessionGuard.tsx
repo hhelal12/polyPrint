@@ -1,11 +1,16 @@
 "use client";
-import { useEffect } from "react";
+
+import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
+import Popup from "@/components/ui/Popup"; // 1. Import Popup
 
 export default function SessionGuard() {
   const supabase = createClient();
   const router = useRouter();
+  
+  //Add state for the Popup
+  const [showPopup, setShowPopup] = useState(false);
 
   useEffect(() => {
     // 15 minutes = 900,000 ms
@@ -13,11 +18,19 @@ export default function SessionGuard() {
       await supabase.auth.signOut();
       router.push("/login");
       router.refresh();
-      alert("Session expired for security. Please log in again.");
+      setShowPopup(true);
     }, 900000); 
 
     return () => clearTimeout(timeout);
   }, [router, supabase]);
 
-  return null; // This component doesn't render anything
+  return (
+    <Popup 
+      isOpen={showPopup}
+      title="Session Expired"
+      message="Your session has expired for security reasons. Please log in again."
+      variant="info"
+      onClose={() => setShowPopup(false)}
+    />
+  );
 }

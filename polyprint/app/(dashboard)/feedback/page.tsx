@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { getCompleteOrders } from "@/lib/orders/order";
 import Popup from "@/components/ui/Popup"; 
+import { logAction } from "@/lib/audit/logger"; 
 
 export default function StudentFeedbackPage() {
   const supabase = createClient();
@@ -122,6 +123,7 @@ export default function StudentFeedbackPage() {
         variant: "error"
       });
     } else {
+      await logAction(`Feedback submitted for Order ID: ${orderId} (Rating: ${rating})`);
       setPopupConfig({
         isOpen: true,
         title: "Feedback Submitted!",

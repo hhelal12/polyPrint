@@ -3,6 +3,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { logAction } from "@/lib/audit/logger";
 
 export async function getCompleteOrders() {
   const cookieStore = await cookies();
@@ -127,7 +128,7 @@ export async function getPendingCount() {
  * Updates status and injects review comments into the order context.
  */
 export async function updateOrderStatusAction(
-  orderId: string, 
+  orderId: string,
   newStatus: "approved" | "rejected",
   managerNote?: string
 ) {
@@ -151,8 +152,8 @@ export async function updateOrderStatusAction(
 
     const { error } = await supabase
       .from("orders")
-      .update({ 
-        status: newStatus, 
+      .update({
+        status: newStatus,
         manager_id: user.id,
         manager_notes: managerNote
       })
@@ -160,7 +161,8 @@ export async function updateOrderStatusAction(
 
     if (error) throw error;
 
-    revalidatePath("/dashboard/manager"); 
+    await logAction(`Order ${orderId} status updated to: ${newStatus}`); 
+    revalidatePath("/dashboard/manager");
     return { success: true };
   } catch (err: any) {
     return { error: err.message };
@@ -179,7 +181,7 @@ export async function submitOrderAction(formData: {
   print_sides: string;
   quantity: number;
   file_url: string;
-  estimated_pages: number; 
+  estimated_pages: number;
   special_instructions?: string;
 }) {
   const cookieStore = await cookies();
@@ -221,7 +223,7 @@ export async function submitOrderAction(formData: {
         order_name: formData.order_name,
         description: formData.description,
         status: "pending_approval",
-        total_price: calculatedTotalPrice 
+        total_price: calculatedTotalPrice
       })
       .select()
       .single();
@@ -244,6 +246,8 @@ export async function submitOrderAction(formData: {
 
     if (itemErr) throw itemErr;
 
+    await logAction(`Order submitted: ${formData.order_name}`); 
+
     revalidatePath("/dashboard");
     return { success: true };
   } catch (err: any) {
@@ -265,9 +269,9 @@ export async function approveOrderAction(orderId: string) {
 
     const { error } = await supabase
       .from("orders")
-      .update({ 
-        status: "approved", 
-        manager_id: user.id  
+      .update({
+        status: "approved",
+        manager_id: user.id
       })
       .eq("id", orderId);
 
