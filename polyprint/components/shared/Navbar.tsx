@@ -34,14 +34,13 @@ export default async function Navbar() {
     staff: [
       { label: "Dashboard", href: "/dashboard" },
       { label: "Manage Order", href: "/orders/manage" },
-      { label: "Material Order", href: "/orders/material" },
       { label: "Feedback", href: "/feedback/staff" }
     ],
     manager: [
       { label: "Dashboard", href: "/dashboard" },
       { label: "Approvals", href: "/approvals" }
     ],
-    line_manager: [ // Maps database snake_case structure cleanly
+    line_manager: [
       { label: "Dashboard", href: "/dashboard" },
       { label: "Feedback", href: "/feedback/manger" },
       { label: "Analysis", href: "/analysis" },
@@ -49,7 +48,6 @@ export default async function Navbar() {
     ],
     admin: [
       { label: "Dashboard", href: "/dashboard" },
-      { label: "Analytics", href: "/analytics" },
       { label: "User Management", href: "/users" },
       { label: "Audit Logs", href: "/audit-logs" }
     ],

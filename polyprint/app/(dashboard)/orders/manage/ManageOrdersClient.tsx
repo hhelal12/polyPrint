@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { updateOrderStatusAction } from "@/lib/orders/staffOrder";
 import StaffOrderFilters from "@/components/orders/StaffOrderFilters";
+import Popup from "@/components/ui/Popup";
 
 interface OrderItem {
   id?: string;
@@ -19,7 +20,7 @@ interface Order {
   id: string;
   status: string | null;
   order_name: string | null;
-  total_price?: number | string | null; // ◄ Made optional with '?' to clear the declaration mismatch error
+  total_price?: number | string | null;
   manager_notes: string | null;
   created_at: string | null;
   requester?: {
@@ -37,14 +38,25 @@ export default function ManageOrdersClient({ fullName, initialOrders = [] }: Man
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const supabase = createClient();
 
-  // Filter States
+  // Popup State for UI alerts and confirmations
+  const [popup, setPopup] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant: "success" | "error" | "info";
+    onConfirm?: () => void;
+  }>({ isOpen: false, title: "", message: "", variant: "info" });
+
   const [searchQuery, setSearchQuery] = useState("");
   const [colorFilter, setColorFilter] = useState("all");
   const [sidesFilter, setSidesFilter] = useState("all");
 
   const handleDownload = async (order: Order) => {
     const fileUrl = order.order_items?.[0]?.file_url;
-    if (!fileUrl) return alert("No file found.");
+    if (!fileUrl) {
+      setPopup({ isOpen: true, title: "Error", message: "No file found for this order.", variant: "error" });
+      return;
+    }
 
     try {
       const { data, error } = await supabase.storage
@@ -53,23 +65,30 @@ export default function ManageOrdersClient({ fullName, initialOrders = [] }: Man
       if (error) throw error;
       window.open(data.signedUrl, "_blank");
     } catch (error) {
-      alert("Could not retrieve file.");
+      setPopup({ isOpen: true, title: "Download Failed", message: "Could not retrieve file. Please try again.", variant: "error" });
     }
   };
 
   const handleStatusUpdate = async (orderId: string, nextStatus: "in_progress" | "completed") => {
-    if (!confirm(`Mark as ${nextStatus.replace('_', ' ')}?`)) return;
-    setLoadingId(orderId);
-    try {
-      await updateOrderStatusAction(orderId, nextStatus);
-    } catch (err) {
-      alert("Update failed. Check RLS policies.");
-    } finally {
-      setLoadingId(null);
-    }
+    setPopup({
+      isOpen: true,
+      title: "Confirm Status Update",
+      message: `Are you sure you want to mark this order as ${nextStatus.replace('_', ' ')}?`,
+      variant: "info",
+      onConfirm: async () => {
+        setLoadingId(orderId);
+        try {
+          await updateOrderStatusAction(orderId, nextStatus);
+          setPopup({ isOpen: true, title: "Success", message: "Order updated successfully.", variant: "success" });
+        } catch (err) {
+          setPopup({ isOpen: true, title: "Update Failed", message: "There was a problem updating the order. Check RLS policies.", variant: "error" });
+        } finally {
+          setLoadingId(null);
+        }
+      }
+    });
   };
 
-  // Filter Pipeline Engine
   const filteredOrders = useMemo(() => {
     return initialOrders.filter((order) => {
       const searchTarget = (
@@ -80,7 +99,6 @@ export default function ManageOrdersClient({ fullName, initialOrders = [] }: Man
       const matchesSearch = searchTarget.includes(searchQuery.toLowerCase());
 
       const item = order.order_items?.[0];
-
       const itemColorMode = item?.color_mode?.toLowerCase() === "full_color" || item?.color_mode?.toLowerCase() === "color"
         ? "full_color"
         : "black_white";
@@ -115,7 +133,6 @@ export default function ManageOrdersClient({ fullName, initialOrders = [] }: Man
         </div>
       </header>
 
-      {/* Linked Filter Split Layout Component */}
       <StaffOrderFilters
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
@@ -125,7 +142,6 @@ export default function ManageOrdersClient({ fullName, initialOrders = [] }: Man
         setSidesFilter={setSidesFilter}
       />
 
-      {/* Main Table Interface Workspace */}
       <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -145,104 +161,39 @@ export default function ManageOrdersClient({ fullName, initialOrders = [] }: Man
 
                 return (
                   <tr key={order.id} className="hover:bg-slate-50/40 transition-colors">
-                    {/* Column 1: Identification */}
                     <td className="p-4 space-y-1.5">
-                      <p className="font-bold text-[#0D284A] text-sm leading-tight">
-                        {order.order_name || "Untitled"}
-                      </p>
+                      <p className="font-bold text-[#0D284A] text-sm leading-tight">{order.order_name || "Untitled"}</p>
                       <div className="flex flex-col gap-0.5 text-xs">
                         <p className="text-gray-400 font-mono">ID: #{order.id.slice(0, 8)}</p>
-                        <p className="text-gray-500 font-medium">
-                          User: <span className="text-gray-700 font-semibold">{order.requester?.full_name || "Unknown"}</span>
-                        </p>
-                        <p className="text-[10px] text-gray-400">
-                          {order.created_at 
-                            ? new Date(order.created_at).toLocaleString('en-GB', {
-                                day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
-                              })
-                            : "Pending Date"}
-                        </p>
+                        <p className="text-gray-500 font-medium">User: <span className="text-gray-700 font-semibold">{order.requester?.full_name || "Unknown"}</span></p>
                       </div>
                     </td>
-
-                    {/* Column 2: Parameters & Pricing Box Details */}
                     <td className="p-4 space-y-2">
                       <div className="flex flex-wrap gap-1.5 max-w-xs">
-                        <span className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 rounded text-[11px] font-medium">
-                          {primaryItem?.service_type || "Standard Print"}
-                        </span>
-                        <span className="px-2 py-0.5 bg-purple-50 text-purple-700 border border-purple-100 rounded text-[11px] font-medium font-mono">
-                          {primaryItem?.paper_size || "A4"}
-                        </span>
-                        <span className={`px-2 py-0.5 border rounded text-[11px] font-medium ${
-                          isColor 
-                            ? "bg-pink-50 text-pink-700 border-pink-100 font-bold" 
-                            : "bg-slate-100 text-slate-700 border-slate-200"
-                        }`}>
-                          {primaryItem?.color_mode?.replace('_', ' ') || "B&W"}
-                        </span>
-                        <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded text-[11px] font-medium">
-                          {primaryItem?.print_sides?.replace('_', '-') || "1-sided"}
-                        </span>
-                        <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-100 rounded text-[11px] font-bold font-mono">
-                          Qty: x{primaryItem?.quantity || 1}
-                        </span>
-                      </div>
-                      
-                      <div className="text-[11px]">
-                        <span className="text-gray-400 font-medium">Price Tag: </span>
-                        <span className="font-mono font-bold text-cyan-600 bg-cyan-50 border border-cyan-100/70 px-1.5 py-0.5 rounded">
-                          {(Number(order.total_price) || 0).toFixed(3)} BHD
-                        </span>
+                        <span className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 rounded text-[11px] font-medium">{primaryItem?.service_type || "Standard Print"}</span>
+                        <span className="px-2 py-0.5 bg-purple-50 text-purple-700 border border-purple-100 rounded text-[11px] font-medium font-mono">{primaryItem?.paper_size || "A4"}</span>
+                        <span className={`px-2 py-0.5 border rounded text-[11px] font-medium ${isColor ? "bg-pink-50 text-pink-700 border-pink-100 font-bold" : "bg-slate-100 text-slate-700 border-slate-200"}`}>{primaryItem?.color_mode?.replace('_', ' ') || "B&W"}</span>
+                        <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded text-[11px] font-medium">{primaryItem?.print_sides?.replace('_', '-') || "1-sided"}</span>
+                        <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-100 rounded text-[11px] font-bold font-mono">Qty: x{primaryItem?.quantity || 1}</span>
                       </div>
                     </td>
-
-                    {/* Column 3: Custom Messages */}
                     <td className="p-4 text-xs max-w-[220px]">
-                      {order.manager_notes ? (
-                        <div className="bg-amber-50/40 border border-amber-100/70 p-2.5 rounded-xl text-amber-900 italic leading-normal">
-                          "{order.manager_notes}"
-                        </div>
-                      ) : (
-                        <span className="text-gray-300 italic">No instructions left</span>
-                      )}
+                      {order.manager_notes ? <div className="bg-amber-50/40 border border-amber-100/70 p-2.5 rounded-xl text-amber-900 italic leading-normal">"{order.manager_notes}"</div> : <span className="text-gray-300 italic">No instructions</span>}
                     </td>
-
-                    {/* Column 4: Badges */}
                     <td className="p-4">
-                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${
-                        order.status === 'completed' 
-                          ? 'bg-green-50 text-green-700 border-green-200' 
-                          : order.status === 'in_progress' 
-                          ? 'bg-amber-50 text-amber-700 border-amber-200' 
-                          : 'bg-blue-50 text-blue-700 border-blue-200'
-                      }`}>
+                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${order.status === 'completed' ? 'bg-green-50 text-green-700 border-green-200' : order.status === 'in_progress' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
                         {order.status?.replace('_', ' ') || "N/A"}
                       </span>
                     </td>
-
-                    {/* Column 5: Actions */}
                     <td className="p-4 text-right">
                       <div className="flex gap-2 justify-end items-center">
-                        <button 
-                          onClick={() => handleDownload(order)} 
-                          className="p-2 bg-gray-100 rounded-xl hover:bg-gray-200 text-sm border transition-colors shadow-sm"
-                          title="Download File"
-                        >
-                          💾
-                        </button>
+                        <button onClick={() => handleDownload(order)} className="p-2 bg-gray-100 rounded-xl hover:bg-gray-200 text-sm border transition-colors shadow-sm">💾</button>
                         <button
                           onClick={() => handleStatusUpdate(order.id, order.status === 'approved' ? 'in_progress' : 'completed')}
                           disabled={loadingId === order.id || order.status === 'completed'}
-                          className={`px-4 py-2 text-xs font-bold rounded-xl transition-all shadow-sm min-w-[70px] ${
-                            order.status === 'completed'
-                              ? "bg-gray-100 text-gray-400 border cursor-not-allowed shadow-none"
-                              : order.status === 'in_progress'
-                              ? "bg-green-600 hover:bg-green-700 text-white"
-                              : "bg-[#0D284A] hover:bg-[#1a3a5f] text-white"
-                          }`}
+                          className={`px-4 py-2 text-xs font-bold rounded-xl transition-all shadow-sm ${order.status === 'completed' ? "bg-gray-100 text-gray-400" : "bg-[#0D284A] text-white"}`}
                         >
-                          {loadingId === order.id ? "..." : (order.status === 'approved' ? "Start" : order.status === 'in_progress' ? "Complete" : "Done")}
+                          {loadingId === order.id ? "..." : (order.status === 'approved' ? "Start" : "Complete")}
                         </button>
                       </div>
                     </td>
@@ -252,14 +203,17 @@ export default function ManageOrdersClient({ fullName, initialOrders = [] }: Man
             </tbody>
           </table>
         </div>
-
-        {filteredOrders.length === 0 && (
-          <div className="p-16 text-center space-y-2">
-            <span className="text-4xl block">📋</span>
-            <p className="text-gray-500 font-medium">No production requests found matching criteria.</p>
-          </div>
-        )}
       </div>
+
+      <Popup
+        isOpen={popup.isOpen}
+        title={popup.title}
+        message={popup.message}
+        variant={popup.variant}
+        onConfirm={popup.onConfirm}
+        onClose={() => setPopup(p => ({ ...p, isOpen: false }))}
+      />
     </div>
   );
 }
+
