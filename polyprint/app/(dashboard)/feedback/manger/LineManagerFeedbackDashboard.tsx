@@ -75,7 +75,6 @@ export default function LineManagerFeedbackDashboard({ initialFeedback }: Feedba
   return (
     <div className="max-w-6xl mx-auto p-6 md:p-10 space-y-10">
 
-      {/* Database Empty Alert Bar */}
       {!hasRealData && (
         <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs px-4 py-3 rounded-xl font-medium">
           ⚠️ <strong>No records active:</strong> The database query returned 0 feedback entries for your account profile. Check Row Level Security (RLS) configurations if this is incorrect.

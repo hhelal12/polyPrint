@@ -3,6 +3,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { logAction } from "@/lib/audit/logger";
 
 export async function getApprovedOrdersForStaff() {
     console.log("🚀 FUNCTION STARTED - getApprovedOrdersForStaff");
@@ -70,6 +71,8 @@ export async function updateOrderStatusAction(orderId: string, newStatus: "in_pr
         console.error("Update Error:", error);
         throw error;
     }
+
+    await logAction(`Staff member ${user.id} updated order ${orderId} to: ${newStatus}`); // ADD THIS
 
     revalidatePath("/orders/manage");
     revalidatePath("/dashboard");
