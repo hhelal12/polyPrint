@@ -30,7 +30,11 @@
     "tailwindcss": "^4",
     "typescript": "^5"
   },
-  "optionalDependencies": {
-    "supabase": "^2.92.1"
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "core-js",
+      "sharp",
+      "supabase"
+    ]
   }
 }
