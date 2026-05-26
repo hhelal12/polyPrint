@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createUser } from "@/lib/auth/users";
+import BackButton from "@/components/ui/BackButton"; 
 
 export default function CreateUserPage() {
   const router = useRouter();
@@ -49,6 +50,7 @@ export default function CreateUserPage() {
 
   return (
     <div className="max-w-3xl mx-auto p-8 space-y-8">
+      <BackButton href="/dashboard" label="Back to Dashboard" />
       <div>
         <h1 className="text-3xl font-bold text-[#0D284A]">
           Create New User
@@ -109,7 +111,6 @@ export default function CreateUserPage() {
             <option value="Staff">Staff</option>
             <option value="line_manager">Line Manager</option>
             <option value="Admin">Admin</option>
-            <option value="Guest">Guest</option>
           </select>
         </div>
 
@@ -121,7 +122,8 @@ export default function CreateUserPage() {
             </label>
 
             <input
-              type="text"
+              type="number"
+              required
               value={student_id}
               onChange={(e) => setStudentId(e.target.value)}
               className="w-full border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[#3CCFD0]"

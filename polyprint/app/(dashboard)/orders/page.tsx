@@ -65,18 +65,18 @@ export default function OrdersDashboard() {
 
   // --- Dynamic Filtering Pipeline Matrix ---
   const filteredOrders = orders.filter((order: any) => {
-    // 1. Status Constraint Check
+    //  Status Constraint Check
     const matchesStatus = statusFilter === "all" || order.status === statusFilter;
     
-    // 2. Text Search Constraint Check
+    //  Text Search Constraint Check
     const searchTarget = (order.order_name || "").toLowerCase() + " " + (order.description || "").toLowerCase();
     const matchesSearch = searchTarget.includes(searchQuery.toLowerCase());
 
-    // 3. 💰 Slider Price Constraint Range Boundary Check
+    //  Slider Price Constraint Range Boundary Check
     const finalPrice = Number(order.total_price) || 0;
     const matchesPrice = finalPrice <= maxPrice;
 
-    // 🎨 4. Nested Print Parameters Filter Logic
+    //  Nested Print Parameters Filter Logic
     const orderItem = order.order_items?.[0];
 
     // Map DB configurations securely to filter option IDs
@@ -196,7 +196,7 @@ export default function OrdersDashboard() {
                         </span>
                       </div>
                       
-                      {/* 💰 Total Pricing Box */}
+                      {/*  Total Pricing Box */}
                       <div className="bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100 text-right">
                         <span className="text-[9px] uppercase tracking-wider font-black text-slate-400 block mb-0.5">Total Price</span>
                         <span className="text-sm font-bold text-cyan-600 font-mono">

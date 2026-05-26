@@ -6,6 +6,7 @@ import { submitOrderAction } from "@/lib/orders/order";
 import { getPdfPageCountAction } from "@/lib/orders/pdfUtils";
 import { useRouter } from "next/navigation";
 import Popup from "@/components/ui/Popup";
+import BackButton from "@/components/ui/BackButton";
 
 export default function NewOrderPage() {
     const router = useRouter();
@@ -107,6 +108,11 @@ export default function NewOrderPage() {
 
     return (
         <div className="max-w-2xl mx-auto p-8 bg-white rounded-2xl shadow-sm border border-slate-100 mt-10">
+
+            <div className="mb-6">
+                <BackButton href="/dashboard" label="Back to Dashboard" />
+            </div>
+            
             <header className="mb-10 text-center">
                 <h1 className="text-3xl font-bold text-slate-900">PolyPrint Request</h1>
                 <p className="text-slate-500 mt-2">Submit your material for Copy Centre approval.</p>
@@ -133,7 +139,7 @@ export default function NewOrderPage() {
                         <select className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 outline-none text-slate-800" value={formData.service_type} onChange={(e) => setFormData({ ...formData, service_type: e.target.value })}>
                             <option value="Printing">Printing</option>
                             <option value="Scanning">Scanning</option>
-                            <option value="Binding">Binding</option>
+                            <option value="Binding">Printing posters</option>
                         </select>
                     </div>
                     <div>

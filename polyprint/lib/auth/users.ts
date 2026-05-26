@@ -148,7 +148,7 @@ export async function deleteUser(userId: string) {
   try {
     // 1. Verify Admin Status
     const { data: { user } } = await supabase.auth.getUser();
-    const role = (user?.app_metadata?.role || "").toLowerCase();
+    const role = (user?.user_metadata?.role || "").toLowerCase();
     
     if (role !== 'admin') {
       throw new Error("Access Denied: Admin privileges required.");
