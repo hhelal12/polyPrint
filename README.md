@@ -257,7 +257,6 @@ The application is optimized for:
 Potential future enhancements for PolyPrint include:
 
 * Email notifications
-* Real-time order updates using WebSockets
 * Advanced analytics filtering
 * File storage optimization
 * Exportable audit reports
