@@ -63,17 +63,17 @@ export default function AdminDashboard({ fullName }: AdminDashboardProps) {
     }
   };
 
-  if (!data) return <div className="p-8">Loading System Analytics...</div>;
+  if (!data) return <div className="p-4 sm:p-8">Loading System Analytics...</div>;
 
   return (
-    <div className="p-8 space-y-8 bg-slate-50 min-h-screen">
+    <div className="p-4 sm:p-8 space-y-6 sm:space-y-8 bg-slate-50 min-h-screen">
       <header>
-        <h1 className="text-3xl font-bold text-[#0D284A]">Welcome, {fullName}</h1>
-        <p className="text-gray-500">System Administration & Analytics Overview</p>
+        <h1 className="text-2xl sm:text-3xl font-bold text-[#0D284A]">Welcome, {fullName}</h1>
+        <p className="text-sm sm:text-base text-gray-500">System Administration & Analytics Overview</p>
       </header>
 
       {/* KPI Section */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         <KPICard title="Total Orders" value={data.kpi.totalOrders} color="bg-cyan-600" />
         <KPICard title="Pending" value={data.kpi.pending} color="bg-slate-900" />
         <KPICard title="Completed" value={data.kpi.completed} color="bg-teal-600" />
@@ -81,49 +81,53 @@ export default function AdminDashboard({ fullName }: AdminDashboardProps) {
       </div>
 
       {/* Analytics Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
         {/* Status Distribution Pie Chart */}
-        <div className="bg-white p-6 rounded-2xl shadow border">
+        <div className="bg-white p-4 sm:p-6 rounded-2xl shadow border">
           <h2 className="font-bold mb-4 text-slate-700">Orders by Status</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={Object.entries(data.statusCounts).map(([name, value]) => ({ name, value }))}
-                dataKey="value" innerRadius={70} outerRadius={100} paddingAngle={5}
-              >
-                {Object.entries(data.statusCounts).map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-              </Pie>
-              <Tooltip />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
+          <div className="w-full h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={Object.entries(data.statusCounts).map(([name, value]) => ({ name, value }))}
+                  dataKey="value" innerRadius={60} outerRadius={90} paddingAngle={5}
+                >
+                  {Object.entries(data.statusCounts).map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
         </div>
 
         {/* User Roles Bar Chart */}
-        <div className="bg-white p-6 rounded-2xl shadow border">
+        <div className="bg-white p-4 sm:p-6 rounded-2xl shadow border">
           <h2 className="font-bold mb-4 text-slate-700">User Roles Distribution</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={Object.entries(data.roleCounts).map(([name, value]) => ({ name, value }))}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="value" fill="#0891b2" radius={[10, 10, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="w-full h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={Object.entries(data.roleCounts).map(([name, value]) => ({ name, value }))}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} />
+                <Tooltip />
+                <Bar dataKey="value" fill="#0891b2" radius={[10, 10, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </div>
 
       {/* System Audit Control */}
-      <div className="bg-white p-6 rounded-2xl shadow border flex justify-between items-center">
+      <div className="bg-white p-4 sm:p-6 rounded-2xl shadow border flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
         <div>
-          <h2 className="font-bold text-lg text-slate-800">System Audit Oversight</h2>
-          <p className="text-gray-500 text-sm">Download the complete platform activity audit in standard .log format.</p>
+          <h2 className="font-bold text-base sm:text-lg text-slate-800">System Audit Oversight</h2>
+          <p className="text-gray-500 text-xs sm:text-sm">Download the complete platform activity audit in standard .log format.</p>
         </div>
         <button
           onClick={downloadLogFile}
           disabled={isGenerating}
-          className="bg-slate-900 text-white px-6 py-2 rounded-xl font-bold hover:bg-slate-800 transition disabled:opacity-50"
+          className="w-full sm:w-auto bg-slate-900 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-slate-800 transition disabled:opacity-50 text-sm sm:text-base whitespace-nowrap"
         >
           {isGenerating ? "Processing..." : "Download System Log (.log)"}
         </button>

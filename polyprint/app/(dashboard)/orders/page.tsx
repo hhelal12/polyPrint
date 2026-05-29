@@ -13,9 +13,9 @@ export default function OrdersDashboard() {
   // Filter States
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [maxPrice, setMaxPrice] = useState<number>(500); // ◄ INITIALLY ALLOW ALL UP TO 500 BHD
-  const [colorFilter, setColorFilter] = useState("all");   // ◄ Added color filter state
-  const [sidesFilter, setSidesFilter] = useState("all");   // ◄ Added print sides filter state
+  const [maxPrice, setMaxPrice] = useState<number>(500);
+  const [colorFilter, setColorFilter] = useState("all");
+  const [sidesFilter, setSidesFilter] = useState("all");
 
   // Pagination States
   const [currentPage, setCurrentPage] = useState(1);
@@ -40,14 +40,13 @@ export default function OrdersDashboard() {
     fetchOrders();
   }, []);
 
-  // Reset page window index safely when any filtering parameter shifts
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, statusFilter, maxPrice, colorFilter, sidesFilter]);
 
   if (loading) {
     return (
-      <div className="max-w-5xl mx-auto p-6 md:p-10 text-center text-slate-500 text-sm font-medium">
+      <div className="max-w-5xl mx-auto p-4 md:p-10 text-center text-slate-500 text-sm font-medium">
         Loading your print orders... ⏳
       </div>
     );
@@ -55,68 +54,58 @@ export default function OrdersDashboard() {
 
   if (error) {
     return (
-      <div className="max-w-5xl mx-auto p-6 md:p-10">
-        <div className="p-8 text-red-500 bg-red-50 rounded-xl border border-red-100 text-sm">
+      <div className="max-w-5xl mx-auto p-4 md:p-10">
+        <div className="p-6 text-red-500 bg-red-50 rounded-xl border border-red-100 text-sm">
           Error loading orders: {error}
         </div>
       </div>
     );
   }
 
-  // --- Dynamic Filtering Pipeline Matrix ---
   const filteredOrders = orders.filter((order: any) => {
-    //  Status Constraint Check
     const matchesStatus = statusFilter === "all" || order.status === statusFilter;
-    
-    //  Text Search Constraint Check
     const searchTarget = (order.order_name || "").toLowerCase() + " " + (order.description || "").toLowerCase();
     const matchesSearch = searchTarget.includes(searchQuery.toLowerCase());
-
-    //  Slider Price Constraint Range Boundary Check
     const finalPrice = Number(order.total_price) || 0;
     const matchesPrice = finalPrice <= maxPrice;
-
-    //  Nested Print Parameters Filter Logic
     const orderItem = order.order_items?.[0];
-
-    // Map DB configurations securely to filter option IDs
-    const itemColorMode = orderItem?.color_mode?.toLowerCase() === "full_color" || orderItem?.color_mode?.toLowerCase() === "color" 
-      ? "full_color" 
-      : "black_white";
-
-    const itemPrintSides = orderItem?.print_sides?.toLowerCase() === "double-sided" || orderItem?.print_sides?.toLowerCase() === "double_sided"
-      ? "double_sided"
-      : "one_sided";
-
+    const itemColorMode =
+      orderItem?.color_mode?.toLowerCase() === "full_color" || orderItem?.color_mode?.toLowerCase() === "color"
+        ? "full_color"
+        : "black_white";
+    const itemPrintSides =
+      orderItem?.print_sides?.toLowerCase() === "double-sided" || orderItem?.print_sides?.toLowerCase() === "double_sided"
+        ? "double_sided"
+        : "one_sided";
     const matchesColor = colorFilter === "all" || itemColorMode === colorFilter;
     const matchesSides = sidesFilter === "all" || itemPrintSides === sidesFilter;
-
     return matchesStatus && matchesSearch && matchesPrice && matchesColor && matchesSides;
   });
 
-  // --- Pagination Slice Computations ---
   const totalPages = Math.max(1, Math.ceil(filteredOrders.length / itemsPerPage));
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentPageItems = filteredOrders.slice(indexOfFirstItem, indexOfLastItem);
 
   return (
-    <div className="max-w-5xl mx-auto p-6 md:p-10">
-      <header className="flex justify-between items-center mb-8">
+    <div className="max-w-5xl mx-auto px-4 py-6 md:px-6 md:py-10">
+
+      {/* ── Header ── */}
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">My Print Orders</h1>
-          <p className="text-slate-500">Track your CDOFS requests and approval status.</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">My Print Orders</h1>
+          <p className="text-slate-500 text-sm mt-0.5">Track your CDOFS requests and approval status.</p>
         </div>
-        <Link 
-          href="/orders/new" 
-          className="bg-cyan-600 hover:bg-cyan-700 text-white px-6 py-3 rounded-xl font-semibold transition-all shadow-sm text-sm"
+        <Link
+          href="/orders/new"
+          className="w-full sm:w-auto text-center bg-cyan-600 hover:bg-cyan-700 text-white px-5 py-3 rounded-xl font-semibold transition-all shadow-sm text-sm"
         >
           + New Request
         </Link>
       </header>
 
-      {/* ⚙️ EMBEDDED FILTER COMPONENT LAYER WITH NEW PROPS LINKED */}
-      <OrderFilters 
+      {/* ── Filters ── */}
+      <OrderFilters
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         statusFilter={statusFilter}
@@ -129,91 +118,104 @@ export default function OrdersDashboard() {
         setSidesFilter={setSidesFilter}
       />
 
-      {/* --- Orders Workspace Core Container --- */}
+      {/* ── Empty State ── */}
       {filteredOrders.length === 0 ? (
-        <div className="text-center py-20 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
+        <div className="text-center py-16 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
           <div className="text-5xl mb-4">📄</div>
-          <h3 className="text-xl font-semibold text-slate-800">No matching orders</h3>
-          <p className="text-slate-500 mt-2">Adjust your filtering constraints or query terms.</p>
+          <h3 className="text-lg font-semibold text-slate-800">No matching orders</h3>
+          <p className="text-slate-500 mt-2 text-sm">Adjust your filtering constraints or query terms.</p>
         </div>
       ) : (
         <div className="space-y-6">
-          <div className="grid gap-6">
+          <div className="grid gap-4 md:gap-6">
             {currentPageItems.map((order: any) => {
               const feedbackItem = Array.isArray(order.feedback) ? order.feedback[0] : order.feedback;
               const hasFeedback = order.status === "completed" && feedbackItem;
 
               return (
-                <div 
-                  key={order.id} 
-                  className="bg-white border border-slate-100 p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow flex flex-col gap-4"
+                <div
+                  key={order.id}
+                  className="bg-white border border-slate-100 p-4 md:p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow flex flex-col gap-4"
                 >
-                  <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <span className="text-[10px] font-mono text-slate-400 uppercase tracking-tighter">
-                          #{order.id.slice(0, 8)}
-                        </span>
-                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase ${getStatusStyles(order.status)}`}>
-                          {order.status.replace('_', ' ')}
-                        </span>
-                      </div>
+                  {/* ── Card Top Row ── */}
+                  <div className="flex flex-col gap-4">
 
-                      <h3 className="text-xl font-bold text-slate-900 leading-tight">
-                        {order.order_name || "Untitled Request"}
-                      </h3>
-
-                      {order.description && (
-                        <p className="text-slate-600 text-sm mt-1 mb-3 line-clamp-2 italic">
-                          "{order.description}"
-                        </p>
-                      )}
-
-                      <div className="flex flex-wrap gap-2 items-center mt-2">
-                        <span className="bg-slate-100 text-slate-700 text-[11px] px-2 py-0.5 rounded font-medium">
-                          {order.order_items?.[0]?.service_type || "Printing Service"}
-                        </span>
-                        <p className="text-sm text-slate-500">
-                          {order.order_items?.[0]?.paper_size} • {order.order_items?.[0]?.color_mode?.replace('_', ' ')} • {order.order_items?.[0]?.print_sides} • Qty: {order.order_items?.[0]?.quantity}
-                        </p>
-                      </div>
+                    {/* Order ID + Status badge */}
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[10px] font-mono text-slate-400 uppercase tracking-tighter">
+                        #{order.id.slice(0, 8)}
+                      </span>
+                      <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase ${getStatusStyles(order.status)}`}>
+                        {order.status.replace("_", " ")}
+                      </span>
                     </div>
 
-                    <div className="text-right flex flex-col items-end justify-between self-stretch pt-1 shrink-0 gap-4 md:gap-0">
-                      <div>
-                        <span className="text-sm font-semibold text-slate-700 block">
-                          {new Date(order.created_at).toLocaleDateString('en-GB', {
-                            day: 'numeric', 
-                            month: 'short', 
-                            year: 'numeric'
-                          })}
-                        </span>
-                        <span className="text-xs text-slate-400 mt-0.5 block">
-                          {new Date(order.created_at).toLocaleTimeString('en-GB', { 
-                            hour: '2-digit', 
-                            minute: '2-digit' 
-                          })}
-                        </span>
+                    {/* Main content + price block */}
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+
+                      {/* Left — title, description, tags */}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-lg sm:text-xl font-bold text-slate-900 leading-tight truncate">
+                          {order.order_name || "Untitled Request"}
+                        </h3>
+
+                        {order.description && (
+                          <p className="text-slate-600 text-sm mt-1 mb-3 line-clamp-2 italic">
+                            "{order.description}"
+                          </p>
+                        )}
+
+                        <div className="flex flex-wrap gap-2 items-center mt-2">
+                          <span className="bg-slate-100 text-slate-700 text-[11px] px-2 py-0.5 rounded font-medium whitespace-nowrap">
+                            {order.order_items?.[0]?.service_type || "Printing Service"}
+                          </span>
+                          <p className="text-xs text-slate-500 leading-snug">
+                            {order.order_items?.[0]?.paper_size} •{" "}
+                            {order.order_items?.[0]?.color_mode?.replace("_", " ")} •{" "}
+                            {order.order_items?.[0]?.print_sides} • Qty:{" "}
+                            {order.order_items?.[0]?.quantity}
+                          </p>
+                        </div>
                       </div>
-                      
-                      {/*  Total Pricing Box */}
-                      <div className="bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100 text-right">
-                        <span className="text-[9px] uppercase tracking-wider font-black text-slate-400 block mb-0.5">Total Price</span>
-                        <span className="text-sm font-bold text-cyan-600 font-mono">
-                          BHD {(Number(order.total_price) || 0).toFixed(3)}
-                        </span>
+
+                      {/* Right — date + price */}
+                      <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-3 sm:gap-4 shrink-0 sm:pt-1">
+                        <div className="text-left sm:text-right">
+                          <span className="text-sm font-semibold text-slate-700 block">
+                            {new Date(order.created_at).toLocaleDateString("en-GB", {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            })}
+                          </span>
+                          <span className="text-xs text-slate-400 mt-0.5 block">
+                            {new Date(order.created_at).toLocaleTimeString("en-GB", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        </div>
+
+                        <div className="bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100 text-right">
+                          <span className="text-[9px] uppercase tracking-wider font-black text-slate-400 block mb-0.5">
+                            Total Price
+                          </span>
+                          <span className="text-sm font-bold text-cyan-600 font-mono">
+                            BHD {(Number(order.total_price) || 0).toFixed(3)}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Feedback Block */}
+                  {/* ── Feedback Block ── */}
                   {hasFeedback && (
-                    <div className="mt-2 pt-4 border-t border-dashed border-slate-100 flex flex-col gap-1.5 bg-amber-50/20 p-3 rounded-xl border border-amber-500/5">
-                      <div className="flex items-center gap-1">
+                    <div className="pt-4 border-t border-dashed border-slate-100 flex flex-col gap-1.5 bg-amber-50/20 p-3 rounded-xl border border-amber-500/5">
+                      <div className="flex items-center gap-1 flex-wrap">
                         <span className="text-xs font-bold text-slate-700 mr-1">Your Rating:</span>
                         {Array.from({ length: 5 }).map((_, index) => (
-                          <span 
-                            key={index} 
+                          <span
+                            key={index}
                             className={`text-sm ${index < (feedbackItem.rating || 0) ? "text-amber-400" : "text-slate-200"}`}
                           >
                             ★
@@ -227,25 +229,35 @@ export default function OrdersDashboard() {
                       )}
                     </div>
                   )}
-
                 </div>
               );
             })}
           </div>
 
-          {/* 📑 PAGINATION FOOTER */}
-          <div className="flex items-center justify-between border-t border-slate-100 pt-6 mt-4">
+          {/* ── Pagination ── */}
+          <div className="flex items-center justify-between border-t border-slate-100 pt-6 mt-4 gap-2">
             <button
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
               disabled={currentPage === 1}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="px-3 sm:px-4 py-2 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
             >
-              ← Previous
+              ← Prev
             </button>
-            
-            <div className="flex items-center gap-2">
+
+            <div className="flex items-center gap-1.5 flex-wrap justify-center">
               {Array.from({ length: totalPages }).map((_, index) => {
                 const pageNumber = index + 1;
+                // On mobile show only nearby pages to avoid overflow
+                const isNearCurrent = Math.abs(pageNumber - currentPage) <= 1 || pageNumber === 1 || pageNumber === totalPages;
+                if (!isNearCurrent) {
+                  // Show ellipsis once per gap
+                  if (pageNumber === currentPage - 2 || pageNumber === currentPage + 2) {
+                    return (
+                      <span key={pageNumber} className="text-slate-400 text-xs px-1">…</span>
+                    );
+                  }
+                  return null;
+                }
                 return (
                   <button
                     key={pageNumber}
@@ -263,9 +275,9 @@ export default function OrdersDashboard() {
             </div>
 
             <button
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
               disabled={currentPage === totalPages}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="px-3 sm:px-4 py-2 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
             >
               Next →
             </button>
@@ -278,15 +290,15 @@ export default function OrdersDashboard() {
 
 function getStatusStyles(status: string) {
   switch (status) {
-    case 'pending_approval':
-      return 'bg-amber-50 text-amber-700 border border-amber-200';
-    case 'approved':
-      return 'bg-blue-50 text-blue-700 border border-blue-200';
-    case 'completed':
-      return 'bg-green-50 text-green-700 border border-green-200';
-    case 'rejected':
-      return 'bg-red-50 text-red-700 border border-red-200';
+    case "pending_approval":
+      return "bg-amber-50 text-amber-700 border border-amber-200";
+    case "approved":
+      return "bg-blue-50 text-blue-700 border border-blue-200";
+    case "completed":
+      return "bg-green-50 text-green-700 border border-green-200";
+    case "rejected":
+      return "bg-red-50 text-red-700 border border-red-200";
     default:
-      return 'bg-slate-50 text-slate-700 border border-slate-200';
+      return "bg-slate-50 text-slate-700 border border-slate-200";
   }
 }

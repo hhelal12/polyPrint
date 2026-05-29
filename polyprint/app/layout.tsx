@@ -15,6 +15,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "PolyPrint | Copy Centre System",
   description: "Digital Transformation for Bahrain Polytechnic Copy Centre",
+  icons: {
+    icon: "/logo.svg", // Next.js looks inside the public folder automatically
+  },
 };
 
 export default function RootLayout({

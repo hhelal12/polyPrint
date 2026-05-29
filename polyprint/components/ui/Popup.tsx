@@ -5,7 +5,7 @@ import { useEffect } from "react";
 interface PopupProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm?: () => void; // Added for confirmation logic
+  onConfirm?: () => void;
   title: string;
   message: string;
   variant?: "success" | "error" | "info";
@@ -32,27 +32,35 @@ export default function Popup({ isOpen, onClose, onConfirm, title, message, vari
   const currentStyle = styles[variant];
 
   return (
+    // 'fixed inset-0' handles full-screen overlay. 
+    // 'p-4' ensures the popup doesn't touch the edges of a phone screen.
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-2xl bg-white p-6 text-center shadow-xl border border-slate-100">
-        <div className={`mx-auto flex h-14 w-14 items-center justify-center rounded-full ${currentStyle.bg} border ${currentStyle.border} text-2xl mb-4`}>
+      
+      {/* 'max-w-md' and 'w-full' ensure it looks good on both mobile and desktop */}
+      <div className="relative w-full max-w-sm sm:max-w-md rounded-3xl bg-white p-6 sm:p-8 text-center shadow-2xl border border-slate-100 animate-in fade-in zoom-in duration-200">
+        
+        <div className={`mx-auto flex h-16 w-16 items-center justify-center rounded-full ${currentStyle.bg} border ${currentStyle.border} text-3xl mb-4`}>
           {currentStyle.icon}
         </div>
-        <h3 className="text-lg font-black text-slate-900">{title}</h3>
-        <p className="mt-2 text-xs text-slate-500">{message}</p>
+        
+        <h3 className="text-xl font-black text-slate-900">{title}</h3>
+        <p className="mt-2 text-sm text-slate-500 leading-relaxed">{message}</p>
 
-        <div className="mt-6 flex gap-3">
+        <div className="mt-8 flex flex-col-reverse sm:flex-row gap-3">
           {onConfirm && (
             <button 
               onClick={() => { onConfirm(); onClose(); }} 
-              className={`flex-1 rounded-xl px-4 py-2.5 text-xs font-bold text-white ${currentStyle.btnBg}`}
+              className={`w-full rounded-2xl px-6 py-3 text-sm font-bold text-white ${currentStyle.btnBg} transition-all active:scale-[0.98]`}
             >
               Confirm
             </button>
           )}
           <button
             onClick={onClose}
-            className={`flex-1 rounded-xl px-4 py-2.5 text-xs font-bold ${onConfirm ? "bg-slate-100 text-slate-600" : `text-white ${currentStyle.btnBg}`}`}
+            className={`w-full rounded-2xl px-6 py-3 text-sm font-bold transition-all active:scale-[0.98] ${
+              onConfirm ? "bg-slate-100 text-slate-600 hover:bg-slate-200" : `text-white ${currentStyle.btnBg}`
+            }`}
           >
             {onConfirm ? "Cancel" : "Acknowledge"}
           </button>

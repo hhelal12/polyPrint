@@ -3,17 +3,15 @@ import Image from 'next/image';
 import LogoutBut from './logoutBut';
 import SessionGuard from '../../lib/auth/SessionGuard';
 import { getCurrentUser } from "@/lib/auth/getCurrentUser";
-import NotificationBell from './NotificationBell'; // Import the new component
+import NotificationBell from './NotificationBell';
+import NavbarToggle from './NavbarToggle'; 
 
 export default async function Navbar() {
   const data = await getCurrentUser();
-
   if (!data) return null;
 
   const { fullName, role } = data;
-  const userId = data.user.id; // Extract the user ID explicitly to pass down
-
-  // Standardize role to lowercase to match the config keys cleanly
+  const userId = data.user.id;
   const userRoleKey = role?.toLowerCase() as keyof typeof ROLE_NAV_CONFIG;
 
   const initials = fullName
@@ -44,7 +42,6 @@ export default async function Navbar() {
       { label: "Dashboard", href: "/dashboard" },
       { label: "Feedback", href: "/feedback/manger" },
       { label: "Analysis", href: "/analysis" },
-
     ],
     admin: [
       { label: "Dashboard", href: "/dashboard" },
@@ -65,57 +62,44 @@ export default async function Navbar() {
       <SessionGuard />
 
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
+        
+        {/* Left Section: Mobile Toggle + Logo */}
+        <div className="flex items-center gap-1">
+          <NavbarToggle links={navLinks} />
+          <Link href="/dashboard" className="flex items-center gap-2">
+            <Image src="/logo.svg" alt="Logo" width={30} height={30} priority />
+            <span className="hidden sm:block text-xl font-extrabold text-[#0D284A] tracking-tight">
+              Poly<span className="text-[#3CCFD0]">Print</span>
+            </span>
+          </Link>
+        </div>
 
-        {/* Logo Area */}
-        <Link href="/dashboard" className="flex items-center gap-2 group">
-          <Image
-            src="/logo.svg"
-            alt="PolyPrint Logo"
-            width={35}
-            height={35}
-            priority
-          />
-          <span className="text-xl font-extrabold text-[#0D284A] tracking-tight">
-            Poly<span className="text-[#3CCFD0]">Print</span>
-          </span>
-        </Link>
-
-        {/* Dynamic Navigation Links Based on Role */}
+        {/* Center Section: Desktop Links */}
         <div className="hidden md:flex items-center gap-6 text-sm font-semibold text-gray-600">
           {navLinks.map((link) => (
-            <Link
-              key={link.label}
-              href={link.href}
-              className="hover:text-[#3CCFD0] transition-colors"
-            >
+            <Link key={link.label} href={link.href} className="hover:text-[#3CCFD0] transition-colors">
               {link.label}
             </Link>
           ))}
         </div>
 
-        {/* User Actions */}
-        <div className="flex items-center gap-4">
-
-          {/* Real-time Notification Dropdown */}
+        {/* Right Section: User Actions */}
+        <div className="flex items-center gap-2 md:gap-4">
           <NotificationBell currentUserId={userId} />
 
-          <div className="h-6 w-px bg-gray-200" />
-
-          <div className="hidden sm:flex flex-col text-right">
-            <span className="text-sm font-bold text-[#0D284A] leading-none">
-              {fullName}
-            </span>
-            <span className="text-[10px] font-bold uppercase tracking-widest text-[#3CCFD0] mt-1">
-              {role}
-            </span>
+          <div className="hidden sm:flex items-center gap-4">
+            <div className="h-6 w-px bg-gray-200" />
+            <div className="flex flex-col text-right">
+              <span className="text-xs font-bold text-[#0D284A] leading-none">{fullName}</span>
+              <span className="text-[9px] font-bold uppercase tracking-widest text-[#3CCFD0] mt-1">{role}</span>
+            </div>
           </div>
 
-          <div className="h-10 w-10 rounded-full bg-[#3CCFD0]/10 border-2 border-[#3CCFD0] flex items-center justify-center text-[#0D284A] font-bold text-sm shadow-inner">
+          <div className="h-9 w-9 rounded-full bg-[#3CCFD0]/10 border-2 border-[#3CCFD0] flex items-center justify-center text-[#0D284A] font-bold text-xs shadow-inner shrink-0">
             {initials}
           </div>
 
-          <div className="h-6 w-px bg-gray-200 mx-1" />
-
+          <div className="hidden sm:block h-6 w-px bg-gray-200" />
           <LogoutBut />
         </div>
       </div>
