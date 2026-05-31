@@ -20,39 +20,84 @@ export default function AnalysisPage() {
     );
   }
 
-  // Parse structured state properties securely
-  const statusData   = Object.entries(data.statusCounts || {}).map(([name, value]) => ({ name, value }));
-  const monthlyData  = Object.entries(data.monthlyOrders || {}).map(([name, value]) => ({ name, value }));
+  const statusData = Object.entries(data.statusCounts || {}).map(([name, value]) => ({ name, value }));
+  const monthlyData = Object.entries(data.monthlyOrders || {}).map(([name, value]) => ({ name, value }));
   const feedbackData = Object.entries(data.feedbackRatings || {}).map(([name, value]) => ({ name, value }));
-  const serviceData  = Object.entries(data.servicePopularity || {}).map(([name, value]) => ({ name, value }));
+  const serviceData = Object.entries(data.servicePopularity || {}).map(([name, value]) => ({ name, value }));
+
+  const renderLegend = () => (
+    <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "8px", paddingTop: "10px" }}>
+      {statusData.map((entry, index) => (
+        <span
+          key={entry.name}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "4px",
+            fontSize: "10px",
+            fontWeight: 600,
+            color: "#475569",
+          }}
+        >
+          <svg width="6" height="6" viewBox="0 0 6 6">
+            <circle cx="3" cy="3" r="3" fill={THEME[index % THEME.length]} />
+          </svg>
+          {entry.name}
+        </span>
+      ))}
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 sm:p-6 md:p-8">
-      <div className="max-w-5xl mx-auto space-y-6">
+    <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc", padding: "32px" }}>
+      <div style={{ maxWidth: "1024px", margin: "0 auto" }}>
 
         {/* ── Dashboard Header ── */}
-        <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 pb-4 sm:pb-0 sm:border-none">
-          <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: "24px",
+          flexWrap: "wrap",
+          gap: "16px",
+        }}>
+          <div>
+            <h1 style={{ fontSize: "22px", fontWeight: 800, color: "#0f172a", margin: 0 }}>
               Analytics Report
             </h1>
-            <p className="text-xs text-slate-500 mt-0.5 font-medium truncate">
+            <p style={{ fontSize: "12px", color: "#64748b", margin: "4px 0 0 0" }}>
               PolyPrint Copy Centre — Manager Dashboard
             </p>
           </div>
           <button
             onClick={downloadPDF}
             disabled={downloading}
-            className="w-full sm:w-auto bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm hover:bg-slate-800 disabled:opacity-60 disabled:cursor-not-allowed transition-all shadow-sm active:scale-[0.98] shrink-0"
+            style={{
+              backgroundColor: "#0f172a",
+              color: "#ffffff",
+              padding: "10px 20px",
+              borderRadius: "12px",
+              fontWeight: 700,
+              fontSize: "13px",
+              border: "none",
+              cursor: downloading ? "not-allowed" : "pointer",
+              opacity: downloading ? 0.6 : 1,
+            }}
           >
             {downloading ? "Generating PDF..." : "⬇ Download PDF"}
           </button>
-        </header>
+        </div>
 
-        {/* ── Master Charts Content Grid ── */}
-        <div 
-          ref={reportRef} 
-          className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 bg-transparent"
+        {/* ── Charts Grid ── */}
+        <div
+          ref={reportRef}
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(2, 1fr)",
+            gap: "20px",
+            backgroundColor: "#f8fafc",
+            padding: "4px",
+          }}
         >
           {/* Orders by Status — Pie */}
           <ChartCard title="Orders by Status">
@@ -62,25 +107,23 @@ export default function AnalysisPage() {
                   data={statusData}
                   dataKey="value"
                   cx="50%"
-                  cy="45%"
-                  outerRadius="65%"
+                  cy="42%"
+                  outerRadius="60%"
                   label={({ name, percent = 0 }) => `${name} ${(percent * 100).toFixed(0)}%`}
                   labelLine={false}
-                  style={{ fontSize: "10px", fontWeight: "600", fill: "#475569" }}
+                  style={{ fontSize: "9px", fontWeight: "600", fill: "#475569" }}
                 >
-                  {statusData.map((_, i) => (
-                    <Cell key={i} fill={THEME[i % THEME.length]} stroke="#ffffff" strokeWidth={2} />
+                  {statusData.map((_, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={THEME[index % THEME.length]}
+                      stroke="#ffffff"
+                      strokeWidth={2}
+                    />
                   ))}
                 </Pie>
                 <Tooltip contentStyle={{ fontSize: "11px", borderRadius: "8px" }} />
-                <Legend
-                  iconSize={6}
-                  iconType="circle"
-                  layout="horizontal"
-                  verticalAlign="bottom"
-                  align="center"
-                  wrapperStyle={{ fontSize: "10px", fontWeight: "600", paddingTop: "10px" }}
-                />
+                <Legend content={renderLegend} />
               </PieChart>
             </ResponsiveContainer>
           </ChartCard>
@@ -92,7 +135,14 @@ export default function AnalysisPage() {
                 <XAxis dataKey="name" tick={{ fontSize: 9, fill: "#94a3b8", fontWeight: "500" }} tickLine={false} />
                 <YAxis domain={[0, "auto"]} tick={{ fontSize: 9, fill: "#94a3b8", fontWeight: "500" }} tickLine={false} />
                 <Tooltip contentStyle={{ fontSize: "11px", borderRadius: "8px" }} />
-                <Line type="monotone" dataKey="value" stroke={THEME[0]} strokeWidth={2.5} dot={{ r: 3, fill: THEME[0], strokeWidth: 0 }} activeDot={{ r: 5 }} />
+                <Line
+                  type="monotone"
+                  dataKey="value"
+                  stroke={THEME[0]}
+                  strokeWidth={2.5}
+                  dot={{ r: 3, fill: THEME[0], strokeWidth: 0 }}
+                  activeDot={{ r: 5 }}
+                />
               </LineChart>
             </ResponsiveContainer>
           </ChartCard>

@@ -31,7 +31,7 @@ export default function StudentFeedbackPage() {
           Order Feedback
         </h1>
         <p className="text-slate-500 text-sm mt-2">
-          Items appear instantly when your order is completed — no refresh needed.
+          Services need feedback, Thanks for your time.
         </p>
       </header>
 

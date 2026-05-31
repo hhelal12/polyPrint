@@ -67,7 +67,7 @@ export default function ConfirmPage() {
     <div className="min-h-screen flex items-center justify-center bg-[#F4F7F9] p-4">
       {/* Reduced padding for mobile (p-6) vs desktop (p-10) */}
       <div className="bg-white p-6 md:p-10 rounded-3xl shadow-xl border border-gray-100 flex flex-col items-center w-full max-w-md">
-        <h1 className="text-xl md:text-2xl font-bold mb-2 text-[#0D284A]">Welcome to CDOFS</h1>
+        <h1 className="text-xl md:text-2xl font-bold mb-2 text-[#0D284A]">Welcome to Polyprint</h1>
         <p className="mb-6 text-gray-500 text-center text-xs md:text-sm">
           Set your account password to complete registration.
         </p>
